@@ -6,6 +6,7 @@ import { Nav } from "@apistock/dash/components/nav";
 export function SidebarNav() {
   return (
     <Nav
+      style="rail"
       sections={[
         {
           items: [

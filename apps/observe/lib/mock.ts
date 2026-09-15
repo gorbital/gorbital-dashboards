@@ -350,24 +350,24 @@ export const mails: Mail[] = Array.from({ length: 22 }, (_, i) => {
 });
 
 /* Logs */
-export type Log = { at: number; level: "debug" | "info" | "warn" | "error"; msg: string; fields: Record<string, string>; instance: string };
-const logLines: [Log["level"], string, Record<string, string>][] = [
-  ["info", "request", { method: "GET", path: "/v1/orgs/acme/projects", status: "200", ms: "38.2" }],
-  ["info", "request", { method: "POST", path: "/v1/auth/sign-in", status: "201", ms: "131.6" }],
-  ["warn", "ratelimit exceeded", { ip: "203.0.113.42", route: "POST /v1/auth/sign-in", limit: "10/min" }],
-  ["error", "mail: send failed", { template: "invite", err: "dial tcp 10.0.3.12:587: i/o timeout", job: "job_9c2e1a" }],
-  ["info", "job completed", { job: "sessions.prune", pruned: "412", ms: "58" }],
-  ["debug", "settings reload", { key: "auth.session_ttl", version: "7", source: "LISTEN/NOTIFY" }],
-  ["info", "request", { method: "GET", path: "/v1/me", status: "200", ms: "4.1" }],
-  ["warn", "slow query", { ms: "241.8", sql: "SELECT date_trunc('hour', at), count(*) FROM audit_events", route: "GET /ops/audit/stats" }],
-  ["info", "release seen", { version: "v0.5.0", commit: "8f1c2ab", instance: "i-b04e" }],
-  ["error", "pq: canceling statement due to statement timeout", { route: "GET /ops/audit/stats", request: "req_a01f7cc2e4" }],
-  ["info", "request", { method: "DELETE", path: "/v1/orgs/hooli/projects/prj_1a2b3c", status: "204", ms: "22.7" }],
-  ["info", "mail delivered", { template: "sign_in_notice", to: "ada@acme.dev", ms: "412" }],
+export type Log = { id: string; at: number; level: "debug" | "info" | "warn" | "error"; ctx: string; msg: string; fields: Record<string, string>; instance: string; traceId: string };
+const logLines: [Log["level"], string, string, Record<string, string>][] = [
+  ["info", "httpx", "request", { method: "GET", path: "/v1/orgs/acme/projects", status: "200", durationMs: "38.2", org: "acme" }],
+  ["info", "httpx", "request", { method: "POST", path: "/v1/auth/sign-in", status: "201", durationMs: "131.6", region: "eu-west-1" }],
+  ["warn", "ratelimit", "rate limit exceeded", { ip: "203.0.113.42", route: "POST /v1/auth/sign-in", limit: "10/min", retryAfter: "41" }],
+  ["error", "mail.Sender", "send failed", { template: "invite", err: "dial tcp 10.0.3.12:587: i/o timeout", job: "job_9c2e1a", attempt: "3" }],
+  ["info", "jobs.Worker", "job completed", { job: "sessions.prune", pruned: "412", durationMs: "58", queue: "maintenance" }],
+  ["debug", "settings.Store", "settings reloaded", { key: "auth.session_ttl", version: "7", source: "LISTEN/NOTIFY" }],
+  ["info", "httpx", "request", { method: "GET", path: "/v1/me", status: "200", durationMs: "4.1", org: "northwind" }],
+  ["warn", "postgres", "slow query", { durationMs: "241.8", sql: "SELECT date_trunc('hour', at), count(*) FROM audit_events", route: "GET /ops/audit/stats" }],
+  ["info", "releases.Tracker", "release seen", { version: "v0.5.0", commit: "8f1c2ab", instance: "i-b04e" }],
+  ["error", "audit.Store", "pq: canceling statement due to statement timeout", { route: "GET /ops/audit/stats", request: "req_a01f7cc2e4", statementTimeout: "250ms" }],
+  ["info", "httpx", "request", { method: "DELETE", path: "/v1/orgs/hooli/projects/prj_1a2b3c", status: "204", durationMs: "22.7", org: "hooli" }],
+  ["info", "mail.Sender", "mail delivered", { template: "sign_in_notice", to: "ada@acme.dev", durationMs: "412", provider: "smtp" }],
 ];
 export const logs: Log[] = Array.from({ length: 40 }, (_, i) => {
-  const [level, msg, fields] = logLines[(i * 7 + 3) % logLines.length];
-  return { at: NOW - i * r.int(1, 9) * 1000, level, msg, fields, instance: r.pick(INSTANCE_IDS) };
+  const [level, ctx, msg, fields] = logLines[(i * 7 + 3) % logLines.length];
+  return { id: `log_${i}`, at: NOW - i * r.int(1, 9) * 1000, level, ctx, msg, fields, instance: r.pick(INSTANCE_IDS), traceId: traces[i % traces.length].id };
 });
 
 /* Instances */

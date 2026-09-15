@@ -1,66 +1,56 @@
-import { Pause, ArrowDownToLine } from "lucide-react";
+import { Calendar, FileText, Plus, Search } from "lucide-react";
 import { Page, PageHeader } from "@apistock/dash/components/page";
 import { Pill, Segmented } from "@apistock/dash/components/pill";
-import { Panel } from "@apistock/dash/components/panel";
-import { Button } from "@apistock/dash/components/button";
-import { Badge } from "@apistock/dash/components/badge";
+import { Panel, Legend } from "@apistock/dash/components/panel";
 import { BarChart } from "@apistock/dash/charts/bars";
 import { theme } from "@apistock/dash/theme";
-import { fmtTime } from "@apistock/dash/lib/format";
 import { logs, hours, perHour } from "@/lib/mock";
-
-const levelClass = { debug: "text-faint", info: "text-info", warn: "text-warn", error: "text-danger" } as const;
+import { LogTable } from "@/components/log-table";
 
 export default function Logs() {
   return (
     <>
-      <PageHeader product="observe" title="Logs" searchHint='level:error route:"POST /v1/orgs/*"'>
-        <Pill dot="ok">Live</Pill>
-        <Segmented options={[{ value: "all", label: "All" }, { value: "info", label: "Info+" }, { value: "warn", label: "Warn+" }, { value: "error", label: "Error" }]} value="all" />
-        <Pill>All instances</Pill>
+      <PageHeader product="observe" title="Logs" description="Everything your app logged, correlated to the requests and jobs it ran in." icon={<FileText size={18} />}>
+        <Pill dot="ok">acme-api</Pill>
+        <span className="flex items-center gap-1">
+          <Segmented options={[{ value: "1h", label: "1H" }, { value: "24h", label: "24H" }, { value: "3d", label: "3D" }, { value: "30d", label: "30D" }]} value="1h" />
+          <button className="grid h-8 w-8 place-items-center rounded-lg border border-border bg-surface text-dim hover:text-text" aria-label="Pick a range">
+            <Calendar size={13} />
+          </button>
+        </span>
       </PageHeader>
       <Page>
-        <Panel title="Volume" meta="lines per hour" className="shrink-0">
-          <BarChart
-            height={90}
-            yTicks={2}
-            labels={hours}
-            stacks={[
-              { name: "info", data: perHour.ok.map((v) => v * 1.4), color: theme.border2 },
-              { name: "warn", data: perHour.client, color: theme.warn },
-              { name: "error", data: perHour.server, color: theme.danger },
-            ]}
-          />
-        </Panel>
-        <Panel
-          title="Stream"
-          meta="structured · slog"
-          flush
-          actions={
-            <>
-              <Badge tone="ok">tailing</Badge>
-              <Button size="sm" kind="ghost" icon={<Pause size={11} />}>Pause</Button>
-              <Button size="sm" kind="ghost" icon={<ArrowDownToLine size={11} />}>Export</Button>
-            </>
-          }
-        >
-          <div className="border-t border-hairline bg-code-bg font-mono text-[11.5px] leading-[1.7]">
-            {logs.map((l, i) => (
-              <div key={i} className="flex gap-3 border-b border-hairline/60 px-4 py-1 hover:bg-elevated/40">
-                <span className="shrink-0 text-dim tnum">{fmtTime(l.at)}</span>
-                <span className={`w-12 shrink-0 uppercase ${levelClass[l.level]}`}>{l.level}</span>
-                <span className="w-14 shrink-0 text-faint">{l.instance}</span>
-                <span className="shrink-0 text-text">{l.msg}</span>
-                <span className="min-w-0 flex-1 truncate text-muted">
-                  {Object.entries(l.fields).map(([k, v]) => (
-                    <span key={k} className="mr-3">
-                      <span className="text-primary/80">{k}</span>=<span className={k === "err" ? "text-danger" : "text-muted"}>{v.includes(" ") ? `"${v}"` : v}</span>
-                    </span>
-                  ))}
-                </span>
-              </div>
-            ))}
+        <div className="flex flex-wrap items-center gap-2">
+          {["From", "To", "Level", "Context"].map((f) => (
+            <button key={f} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-dashed border-border-2 px-3 text-[12px] text-muted hover:border-primary/50 hover:text-text">
+              <Plus size={12} /> {f}
+            </button>
+          ))}
+          <label className="ml-auto flex h-8 w-[300px] items-center gap-2 rounded-lg border border-border bg-surface px-3 text-[12px] text-dim">
+            <Search size={13} />
+            <input className="w-full bg-transparent text-text outline-none placeholder:text-dim" placeholder='level:error ctx:mail.*' />
+          </label>
+        </div>
+        <Panel flush>
+          <div className="flex items-center gap-3 px-4 pt-3">
+            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-dim">Volume · lines per hour</span>
+            <span className="ml-auto">
+              <Legend items={[{ label: "info", color: theme.border2 }, { label: "warn", color: theme.warn }, { label: "error", color: theme.danger }]} />
+            </span>
           </div>
+          <div className="px-2">
+            <BarChart
+              height={64}
+              yTicks={1}
+              labels={hours}
+              stacks={[
+                { name: "info", data: perHour.ok.map((v) => v * 1.4), color: theme.border2 },
+                { name: "warn", data: perHour.client, color: theme.warn },
+                { name: "error", data: perHour.server, color: theme.danger },
+              ]}
+            />
+          </div>
+          <LogTable rows={logs} initiallyOpen={logs[0].id} />
         </Panel>
       </Page>
     </>

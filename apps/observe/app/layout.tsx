@@ -25,9 +25,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${manrope.variable} ${geistMono.variable}`}>
-      <body>
+      <body suppressHydrationWarning>
         <Shell
           product="observe"
+          variant="docked"
           version="v0.1"
           nav={<SidebarNav />}
           app={{ name: "acme-api", env: "production" }}

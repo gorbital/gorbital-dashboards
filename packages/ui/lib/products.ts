@@ -7,9 +7,11 @@ export type ProductId = "devtools" | "observe" | "deploy";
 
 export type Product = {
   id: ProductId;
-  /** Display name, lowercase like the apistock wordmark. */
+  /** Display name. */
   name: string;
-  /** What it is, in plain words, for people who meet the name cold. */
+  /** One word for tight spaces (the icon rail, chips). */
+  short: string;
+  /** What it is, in plain words. */
   kind: string;
   tagline: string;
   url: string;
@@ -19,26 +21,29 @@ export type Product = {
 export const products: Record<ProductId, Product> = {
   devtools: {
     id: "devtools",
-    name: "bench",
+    name: "Dev Portal",
+    short: "Dev",
     kind: "devtools",
     tagline: "Inspect the app on your bench while aps dev runs it.",
-    url: "https://bench.apistock.dev",
+    url: "https://devtools.apistock.dev",
     port: 3100,
   },
   observe: {
     id: "observe",
-    name: "gauge",
+    name: "Observability Portal",
+    short: "Observability",
     kind: "observability",
     tagline: "Requests, traces, jobs and errors from the data your app already sends.",
-    url: "https://gauge.apistock.dev",
+    url: "https://observe.apistock.dev",
     port: 3200,
   },
   deploy: {
     id: "deploy",
-    name: "ship",
+    name: "Deployment Portal",
+    short: "Deploy",
     kind: "deploy",
     tagline: "Releases, rollouts, migrations and the fleet, from commit to running instance.",
-    url: "https://ship.apistock.dev",
+    url: "https://deploy.apistock.dev",
     port: 3300,
   },
 };

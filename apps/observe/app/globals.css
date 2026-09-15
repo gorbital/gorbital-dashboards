@@ -1,0 +1,5 @@
+@import "tailwindcss";
+/* Tailwind only scans this app by default; the components live in the package. */
+@source "../../../packages/ui/components";
+@source "../../../packages/ui/charts";
+@import "@apistock/dash/theme.css";

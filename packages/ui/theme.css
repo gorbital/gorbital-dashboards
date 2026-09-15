@@ -1,0 +1,159 @@
+/*
+ * apistock dashboard theme for Tailwind 4. Import after "tailwindcss" in
+ * each app. Colour values match apistock-web/packages/ui/theme.css
+ * (source of truth: docs/brand/theme.md in the apistock repository).
+ *
+ * Every app sets --font-manrope and --font-geist-mono through next/font.
+ */
+@theme {
+  --font-sans: var(--font-manrope), "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, monospace;
+
+  --color-bg: #0c0c0a;
+  --color-surface: #131310;
+  --color-elevated: #1c1c18;
+  --color-raised: #24241f;
+  --color-code-bg: #0a0a08;
+  --color-text: #f0efe9;
+  --color-muted: #a5a59a;
+  --color-dim: #8a8a80;
+  --color-faint: #5a5a52;
+  --color-hairline: #22221e;
+  --color-border: #2a2a24;
+  --color-border-2: #3a3a34;
+  --color-danger: #ff8f6b;
+  --color-warn: #f0c86b;
+  --color-ok: #8fd98a;
+  --color-info: #8fc4ff;
+  --color-violet: #c4a6ff;
+
+  --color-primary: #d8ff3e;
+  --color-primary-soft: #e9ff8a;
+  --color-primary-mid: #a3c22f;
+  --color-primary-deep: #46561a;
+  --color-primary-deeper: #333f11;
+  --color-primary-shadow: #232b0b;
+
+  --radius-panel: 14px;
+  --radius-tile: 12px;
+
+  --animate-pulse-dot: pulseDot 2s ease-in-out infinite;
+  --animate-rise: rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-shimmer: shimmer 2.4s linear infinite;
+  --animate-dash: dash 1.6s linear infinite;
+
+  @keyframes pulseDot {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(143, 217, 138, 0.45); }
+    60% { box-shadow: 0 0 0 6px rgba(143, 217, 138, 0); }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
+  @keyframes dash {
+    to { stroke-dashoffset: -24; }
+  }
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(216, 255, 62, 0.25);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-2) transparent;
+}
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--color-border-2); border-radius: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* Panel surfaces: one step up, hairline border, no shadows. */
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-panel);
+}
+
+/* The accent used as a ground: a faint lime wash for the one hero moment. */
+.accent-wash {
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgba(216, 255, 62, 0.10), transparent 60%),
+    var(--color-surface);
+}
+
+/* Subtle dotted grid used behind graphs and empty states. */
+.dotgrid {
+  background-image: radial-gradient(rgba(240, 239, 233, 0.07) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+/* Tabular figures everywhere numbers sit in columns. */
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* Rows that rise in one after the other. */
+.stagger > * { animation: var(--animate-rise); }
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 40ms; }
+.stagger > *:nth-child(3) { animation-delay: 80ms; }
+.stagger > *:nth-child(4) { animation-delay: 120ms; }
+.stagger > *:nth-child(5) { animation-delay: 160ms; }
+.stagger > *:nth-child(6) { animation-delay: 200ms; }
+.stagger > *:nth-child(7) { animation-delay: 240ms; }
+.stagger > *:nth-child(8) { animation-delay: 280ms; }
+
+/* Skeleton shimmer for pending cells. */
+.shimmer {
+  background: linear-gradient(90deg, var(--color-elevated) 25%, var(--color-raised) 50%, var(--color-elevated) 75%);
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+}
+
+/* Live dot. */
+.live-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--color-ok);
+  animation: var(--animate-pulse-dot);
+}
+
+/* Flowing edges in the module graph and the pipeline. */
+.flow {
+  stroke-dasharray: 6 6;
+  animation: var(--animate-dash);
+}
+
+kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-dim);
+  border: 1px solid var(--color-border);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  padding: 1px 5px;
+  background: var(--color-code-bg);
+}
+
+code, pre {
+  font-family: var(--font-mono);
+}

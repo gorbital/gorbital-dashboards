@@ -1,0 +1,20 @@
+{
+  "name": "apistock-dashboards",
+  "private": true,
+  "packageManager": "pnpm@10.13.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "devtools": "pnpm --filter devtools",
+    "observe": "pnpm --filter observe",
+    "deploy": "pnpm --filter deploy"
+  },
+  "devDependencies": {
+    "turbo": "^2.10.13",
+    "typescript": "^5.9.2"
+  }
+}

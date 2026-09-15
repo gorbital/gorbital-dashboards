@@ -1,0 +1,24 @@
+{
+  "name": "@apistock/dash",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": ["*.css"],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "next": ">=15",
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "dependencies": {
+    "lucide-react": "^1.46.0"
+  },
+  "devDependencies": {
+    "@apistock/tsconfig": "workspace:*",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "typescript": "^5.9.2"
+  }
+}

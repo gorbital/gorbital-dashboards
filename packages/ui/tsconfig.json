@@ -1,0 +1,8 @@
+{
+  "extends": "@apistock/tsconfig/base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": ["react", "react-dom"]
+  },
+  "include": ["components", "charts", "lib", "theme.ts"]
+}

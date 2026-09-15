@@ -1,11 +1,11 @@
 import { Plus, RotateCw, Trash2 } from "lucide-react";
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Panel } from "@apistock/dash/components/panel";
-import { Badge } from "@apistock/dash/components/badge";
-import { Button } from "@apistock/dash/components/button";
-import { Table } from "@apistock/dash/components/table";
-import { Code, Key, Str, Cmt } from "@apistock/dash/components/code";
-import { fmtAgo } from "@apistock/dash/lib/format";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Panel } from "@gorbital/dash/components/panel";
+import { Badge } from "@gorbital/dash/components/badge";
+import { Button } from "@gorbital/dash/components/button";
+import { Table } from "@gorbital/dash/components/table";
+import { Code, Key, Str, Cmt } from "@gorbital/dash/components/code";
+import { fmtAgo } from "@gorbital/dash/lib/format";
 import { apiKeys, NOW } from "@/lib/mock";
 
 type Row = (typeof apiKeys)[number];
@@ -49,7 +49,7 @@ export default function ApiKeys() {
           <Code>
             <Cmt># .env</Cmt>
             {"\n"}
-            <Key>OBSERVE_URL</Key>=<Str>https://ingest.gauge.apistock.dev</Str>
+            <Key>OBSERVE_URL</Key>=<Str>https://ingest.gauge.gorbital.dev</Str>
             {"\n"}
             <Key>OBSERVE_KEY</Key>=<Str>gau_live_7f3a…</Str>
             {"\n\n"}

@@ -1,38 +1,39 @@
 /*
- * apistock dashboard theme for Tailwind 4. Import after "tailwindcss" in
- * each app. Colour values match apistock-web/packages/ui/theme.css
- * (source of truth: docs/brand/theme.md in the apistock repository).
+ * gorbital dashboard theme for Tailwind 4. Import after "tailwindcss" in
+ * each app. Colour values match gorbital-web/packages/ui/theme.css
+ * (source of truth: docs/brand/theme.md in the gorbital repository).
  *
  * Every app sets --font-manrope and --font-geist-mono through next/font.
  */
 @theme {
   --font-sans: var(--font-manrope), "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, monospace;
+  --font-brand: var(--font-grotesk), "Space Grotesk", var(--font-sans);
 
-  --color-bg: #0c0c0a;
-  --color-surface: #131310;
-  --color-elevated: #1c1c18;
-  --color-raised: #24241f;
-  --color-code-bg: #0a0a08;
-  --color-text: #f0efe9;
-  --color-muted: #a5a59a;
-  --color-dim: #8a8a80;
-  --color-faint: #5a5a52;
-  --color-hairline: #22221e;
-  --color-border: #2a2a24;
-  --color-border-2: #3a3a34;
-  --color-danger: #ff8f6b;
+  --color-bg: #0B0C0A;
+  --color-surface: #16180F;
+  --color-elevated: #1F221A;
+  --color-raised: #272B21;
+  --color-code-bg: #090A08;
+  --color-text: #F2F1EC;
+  --color-muted: #A8AB9F;
+  --color-dim: #8E9285;
+  --color-faint: #5E6157;
+  --color-hairline: #22251C;
+  --color-border: #2B2F23;
+  --color-border-2: #3B4031;
+  --color-danger: #FF5C2B;
   --color-warn: #f0c86b;
   --color-ok: #8fd98a;
   --color-info: #8fc4ff;
   --color-violet: #c4a6ff;
 
-  --color-primary: #d8ff3e;
-  --color-primary-soft: #e9ff8a;
-  --color-primary-mid: #a3c22f;
-  --color-primary-deep: #46561a;
-  --color-primary-deeper: #333f11;
-  --color-primary-shadow: #232b0b;
+  --color-primary: #C6F24A;
+  --color-primary-soft: #DAF77E;
+  --color-primary-mid: #93B534;
+  --color-primary-deep: #3F521A;
+  --color-primary-deeper: #2F3D12;
+  --color-primary-shadow: #1F290B;
 
   --radius-panel: 14px;
   --radius-tile: 12px;
@@ -78,7 +79,7 @@ body {
 }
 
 ::selection {
-  background: rgba(216, 255, 62, 0.25);
+  background: rgba(198, 242, 74, 0.25);
 }
 
 * {
@@ -99,7 +100,7 @@ body {
 /* The accent used as a ground: a faint lime wash for the one hero moment. */
 .accent-wash {
   background:
-    radial-gradient(120% 90% at 0% 0%, rgba(216, 255, 62, 0.10), transparent 60%),
+    radial-gradient(120% 90% at 0% 0%, rgba(198, 242, 74, 0.10), transparent 60%),
     var(--color-surface);
 }
 

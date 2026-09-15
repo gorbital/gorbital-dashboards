@@ -1,10 +1,10 @@
 import { Play, Lock, ShieldCheck, Gauge as GaugeIcon } from "lucide-react";
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Pill, Segmented } from "@apistock/dash/components/pill";
-import { Panel } from "@apistock/dash/components/panel";
-import { Badge, Method, StatusCode } from "@apistock/dash/components/badge";
-import { Button } from "@apistock/dash/components/button";
-import { Code, Key, Str, Num, Cmt } from "@apistock/dash/components/code";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Pill, Segmented } from "@gorbital/dash/components/pill";
+import { Panel } from "@gorbital/dash/components/panel";
+import { Badge, Method, StatusCode } from "@gorbital/dash/components/badge";
+import { Button } from "@gorbital/dash/components/button";
+import { Code, Key, Str, Num, Cmt } from "@gorbital/dash/components/code";
 import { routes, moduleCounts } from "@/lib/mock";
 
 const sel = routes.find((x) => x.id === "r19")!;
@@ -102,7 +102,7 @@ export default function Routes() {
                 <Button kind="primary" size="sm" icon={<Play size={11} />}>
                   Send
                 </Button>
-                <Badge tone="muted">cookie: aps_session</Badge>
+                <Badge tone="muted">cookie: orb_session</Badge>
                 <span className="ml-auto font-mono text-[11px] text-dim">as usr_3f9a1c</span>
               </div>
             </div>

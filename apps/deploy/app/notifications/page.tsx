@@ -1,7 +1,7 @@
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Panel } from "@apistock/dash/components/panel";
-import { Badge, Dot } from "@apistock/dash/components/badge";
-import { Button } from "@apistock/dash/components/button";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Panel } from "@gorbital/dash/components/panel";
+import { Badge, Dot } from "@gorbital/dash/components/badge";
+import { Button } from "@gorbital/dash/components/button";
 import { notifications } from "@/lib/mock";
 
 export default function Notifications() {

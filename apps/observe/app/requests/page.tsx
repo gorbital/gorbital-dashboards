@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Pill, Segmented } from "@apistock/dash/components/pill";
-import { Tile, TileGrid } from "@apistock/dash/components/tile";
-import { Panel, Legend } from "@apistock/dash/components/panel";
-import { Method, StatusCode } from "@apistock/dash/components/badge";
-import { Table } from "@apistock/dash/components/table";
-import { Heatmap } from "@apistock/dash/charts/heatmap";
-import { theme } from "@apistock/dash/theme";
-import { fmtInt, fmtMs, fmtTime, fmtAgo } from "@apistock/dash/lib/format";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Pill, Segmented } from "@gorbital/dash/components/pill";
+import { Tile, TileGrid } from "@gorbital/dash/components/tile";
+import { Panel, Legend } from "@gorbital/dash/components/panel";
+import { Method, StatusCode } from "@gorbital/dash/components/badge";
+import { Table } from "@gorbital/dash/components/table";
+import { Heatmap } from "@gorbital/dash/charts/heatmap";
+import { theme } from "@gorbital/dash/theme";
+import { fmtInt, fmtMs, fmtTime, fmtAgo } from "@gorbital/dash/lib/format";
 import { requests, totals, p95, latencyHeat, latencyBuckets, hours, NOW, type Request } from "@/lib/mock";
 
 export default function Requests() {

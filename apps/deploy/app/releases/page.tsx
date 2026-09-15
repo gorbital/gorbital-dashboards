@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { Rocket } from "lucide-react";
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Pill, Segmented } from "@apistock/dash/components/pill";
-import { Panel } from "@apistock/dash/components/panel";
-import { Badge } from "@apistock/dash/components/badge";
-import { Button } from "@apistock/dash/components/button";
-import { Table } from "@apistock/dash/components/table";
-import { fmtAgo, fmtDuration } from "@apistock/dash/lib/format";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Pill, Segmented } from "@gorbital/dash/components/pill";
+import { Panel } from "@gorbital/dash/components/panel";
+import { Badge } from "@gorbital/dash/components/badge";
+import { Button } from "@gorbital/dash/components/button";
+import { Table } from "@gorbital/dash/components/table";
+import { fmtAgo, fmtDuration } from "@gorbital/dash/lib/format";
 import { releases, NOW, type Release } from "@/lib/mock";
 import { StatusBadge } from "@/components/status";
 

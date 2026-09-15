@@ -1,5 +1,5 @@
 {
-  "name": "apistock-dashboards",
+  "name": "gorbital-dashboards",
   "private": true,
   "packageManager": "pnpm@10.13.1",
   "engines": {

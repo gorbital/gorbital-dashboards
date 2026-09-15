@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { ArrowLeft, Check, Circle, GitCommitHorizontal, Loader, Undo2, X } from "lucide-react";
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Panel, KeyList } from "@apistock/dash/components/panel";
-import { Badge, Dot } from "@apistock/dash/components/badge";
-import { Button } from "@apistock/dash/components/button";
-import { Bar } from "@apistock/dash/components/progress";
-import { theme } from "@apistock/dash/theme";
-import { fmtAgo, fmtDuration, fmtTime } from "@apistock/dash/lib/format";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Panel, KeyList } from "@gorbital/dash/components/panel";
+import { Badge, Dot } from "@gorbital/dash/components/badge";
+import { Button } from "@gorbital/dash/components/button";
+import { Bar } from "@gorbital/dash/components/progress";
+import { theme } from "@gorbital/dash/theme";
+import { fmtAgo, fmtDuration, fmtTime } from "@gorbital/dash/lib/format";
 import { releases, pipeline, rolloutLog, instances, NOW } from "@/lib/mock";
 import { StatusBadge } from "@/components/status";
 

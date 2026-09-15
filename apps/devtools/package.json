@@ -9,14 +9,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@apistock/dash": "workspace:*",
+    "@gorbital/dash": "workspace:*",
     "lucide-react": "^1.46.0",
     "next": "^16.3.5",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
-    "@apistock/tsconfig": "workspace:*",
+    "@gorbital/tsconfig": "workspace:*",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^22",
     "@types/react": "^19.1.0",

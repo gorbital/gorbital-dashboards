@@ -1,17 +1,17 @@
 import Link from "next/link";
 import { ArrowUpRight, Clock } from "lucide-react";
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Pill } from "@apistock/dash/components/pill";
-import { Tile, TileGrid } from "@apistock/dash/components/tile";
-import { Panel, Legend } from "@apistock/dash/components/panel";
-import { Badge, Dot, Method } from "@apistock/dash/components/badge";
-import { Bar } from "@apistock/dash/components/progress";
-import { BarChart } from "@apistock/dash/charts/bars";
-import { AreaChart } from "@apistock/dash/charts/area";
-import { Donut } from "@apistock/dash/charts/donut";
-import { Sparkline } from "@apistock/dash/charts/sparkline";
-import { theme } from "@apistock/dash/theme";
-import { fmtInt, fmtAgo, fmtMs, fmtDuration } from "@apistock/dash/lib/format";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Pill } from "@gorbital/dash/components/pill";
+import { Tile, TileGrid } from "@gorbital/dash/components/tile";
+import { Panel, Legend } from "@gorbital/dash/components/panel";
+import { Badge, Dot, Method } from "@gorbital/dash/components/badge";
+import { Bar } from "@gorbital/dash/components/progress";
+import { BarChart } from "@gorbital/dash/charts/bars";
+import { AreaChart } from "@gorbital/dash/charts/area";
+import { Donut } from "@gorbital/dash/charts/donut";
+import { Sparkline } from "@gorbital/dash/charts/sparkline";
+import { theme } from "@gorbital/dash/theme";
+import { fmtInt, fmtAgo, fmtMs, fmtDuration } from "@gorbital/dash/lib/format";
 import { hours, perHour, totals, p95, p50, errRate, slowest, errorGroups, queues, instances, NOW } from "@/lib/mock";
 
 export default function Overview() {

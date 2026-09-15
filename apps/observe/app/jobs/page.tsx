@@ -1,14 +1,14 @@
 import { Play, Pause } from "lucide-react";
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Pill } from "@apistock/dash/components/pill";
-import { Tile, TileGrid } from "@apistock/dash/components/tile";
-import { Panel } from "@apistock/dash/components/panel";
-import { Badge, Dot } from "@apistock/dash/components/badge";
-import { Button } from "@apistock/dash/components/button";
-import { Table } from "@apistock/dash/components/table";
-import { Sparkline } from "@apistock/dash/charts/sparkline";
-import { theme } from "@apistock/dash/theme";
-import { fmtAgo, fmtMs, fmtInt } from "@apistock/dash/lib/format";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Pill } from "@gorbital/dash/components/pill";
+import { Tile, TileGrid } from "@gorbital/dash/components/tile";
+import { Panel } from "@gorbital/dash/components/panel";
+import { Badge, Dot } from "@gorbital/dash/components/badge";
+import { Button } from "@gorbital/dash/components/button";
+import { Table } from "@gorbital/dash/components/table";
+import { Sparkline } from "@gorbital/dash/charts/sparkline";
+import { theme } from "@gorbital/dash/theme";
+import { fmtAgo, fmtMs, fmtInt } from "@gorbital/dash/lib/format";
 import { queues, jobDefs, jobRuns, NOW, type JobRun } from "@/lib/mock";
 
 const stateTone = { succeeded: "ok", failed: "danger", running: "accent", retrying: "warn", scheduled: "muted" } as const;

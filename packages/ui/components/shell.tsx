@@ -39,7 +39,7 @@ function Switcher({ product, version, compact }: { product: ProductId; version?:
       <Mark className="h-[17px]" />
       {!compact && (
         <>
-          <span className="whitespace-nowrap text-[15px] font-bold leading-none tracking-[-0.03em]">{p.name}</span>
+          <span className="font-brand whitespace-nowrap text-[15px] font-bold leading-none tracking-[-0.03em]">{p.name}</span>
           {version && <span className="font-mono text-[11px] text-dim">{version}</span>}
           <ChevronDown size={12} className="text-dim" />
         </>
@@ -176,7 +176,7 @@ function Rail({ product, version, nav, app, user, searchHint, children }: Props)
       </aside>
       <div className="flex min-w-0 flex-1 flex-col gap-4">
         <header className="sticky top-4 z-20 flex h-14 shrink-0 items-center gap-3 rounded-full border border-hairline bg-surface/90 pl-5 pr-3 backdrop-blur">
-          <span className="text-[15px] font-bold tracking-[-0.03em]">{p.name}</span>
+          <span className="font-brand text-[15px] font-bold tracking-[-0.03em]">{p.name}</span>
           <span className="font-mono text-[11px] text-dim">{version}</span>
           <AppChip app={app} className="ml-3 rounded-full py-1.5" />
           <SearchBox hint={searchHint} className="ml-auto w-[360px] rounded-full" />

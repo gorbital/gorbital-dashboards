@@ -1,9 +1,9 @@
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Tile, TileGrid } from "@apistock/dash/components/tile";
-import { Panel, Legend } from "@apistock/dash/components/panel";
-import { Badge } from "@apistock/dash/components/badge";
-import { Button } from "@apistock/dash/components/button";
-import { theme } from "@apistock/dash/theme";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Tile, TileGrid } from "@gorbital/dash/components/tile";
+import { Panel, Legend } from "@gorbital/dash/components/panel";
+import { Badge } from "@gorbital/dash/components/badge";
+import { Button } from "@gorbital/dash/components/button";
+import { theme } from "@gorbital/dash/theme";
 import { bootstrap, bootstrapTotal } from "@/lib/mock";
 import { RotateCw } from "lucide-react";
 
@@ -14,7 +14,7 @@ export default function Bootstrap() {
   return (
     <>
       <PageHeader product="devtools" title="Bootstrap" searchHint="Jump to route, module, setting">
-        <Badge tone="muted">last start 2 min ago · aps dev</Badge>
+        <Badge tone="muted">last start 2 min ago · orb dev</Badge>
         <Button size="sm" kind="ghost" icon={<RotateCw size={11} />}>
           Restart and measure
         </Button>

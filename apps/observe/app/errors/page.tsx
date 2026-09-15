@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { Check, EyeOff, RotateCcw } from "lucide-react";
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Pill, Segmented } from "@apistock/dash/components/pill";
-import { Tile, TileGrid } from "@apistock/dash/components/tile";
-import { Panel, KeyList } from "@apistock/dash/components/panel";
-import { Badge, Dot } from "@apistock/dash/components/badge";
-import { Button } from "@apistock/dash/components/button";
-import { Code, Cmt } from "@apistock/dash/components/code";
-import { Sparkline } from "@apistock/dash/charts/sparkline";
-import { theme } from "@apistock/dash/theme";
-import { fmtAgo, fmtInt } from "@apistock/dash/lib/format";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Pill, Segmented } from "@gorbital/dash/components/pill";
+import { Tile, TileGrid } from "@gorbital/dash/components/tile";
+import { Panel, KeyList } from "@gorbital/dash/components/panel";
+import { Badge, Dot } from "@gorbital/dash/components/badge";
+import { Button } from "@gorbital/dash/components/button";
+import { Code, Cmt } from "@gorbital/dash/components/code";
+import { Sparkline } from "@gorbital/dash/charts/sparkline";
+import { theme } from "@gorbital/dash/theme";
+import { fmtAgo, fmtInt } from "@gorbital/dash/lib/format";
 import { errorGroups, errRate, NOW } from "@/lib/mock";
 
 const toneOf = { open: "danger", regressed: "warn", resolved: "ok", ignored: "muted" } as const;

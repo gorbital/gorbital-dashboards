@@ -1,12 +1,12 @@
 import { Play, RefreshCw, AlertTriangle } from "lucide-react";
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Tile, TileGrid } from "@apistock/dash/components/tile";
-import { Panel } from "@apistock/dash/components/panel";
-import { Badge, Dot } from "@apistock/dash/components/badge";
-import { Button } from "@apistock/dash/components/button";
-import { Bar } from "@apistock/dash/components/progress";
-import { theme } from "@apistock/dash/theme";
-import { fmtAgo, fmtInt } from "@apistock/dash/lib/format";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Tile, TileGrid } from "@gorbital/dash/components/tile";
+import { Panel } from "@gorbital/dash/components/panel";
+import { Badge, Dot } from "@gorbital/dash/components/badge";
+import { Button } from "@gorbital/dash/components/button";
+import { Bar } from "@gorbital/dash/components/progress";
+import { theme } from "@gorbital/dash/theme";
+import { fmtAgo, fmtInt } from "@gorbital/dash/lib/format";
 import { migrations, pending, tables, slowQueries, NOW } from "@/lib/mock";
 
 export default function DatabasePage() {
@@ -24,7 +24,7 @@ export default function DatabasePage() {
           <Tile label="Migrations" value="12" unit="applied" delta="1 pending" deltaTone="bad" hero />
           <Tile label="Tables" value={String(tables.length)} delta="16.6 MB" deltaTone="flat" />
           <Tile label="Pool" value="3" unit="of 10 conns" delta="0 waiting" deltaTone="flat" />
-          <Tile label="Seed" value="2h" unit="ago" delta="aps seed" deltaTone="flat" />
+          <Tile label="Seed" value="2h" unit="ago" delta="orb seed" deltaTone="flat" />
         </TileGrid>
         <div className="grid grid-cols-[minmax(0,1fr)_380px] gap-3">
           <div className="flex flex-col gap-3">

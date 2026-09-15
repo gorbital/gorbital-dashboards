@@ -1,12 +1,12 @@
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Pill } from "@apistock/dash/components/pill";
-import { Tile, TileGrid } from "@apistock/dash/components/tile";
-import { Panel, KeyList } from "@apistock/dash/components/panel";
-import { Badge } from "@apistock/dash/components/badge";
-import { Table } from "@apistock/dash/components/table";
-import { Split } from "@apistock/dash/components/progress";
-import { theme } from "@apistock/dash/theme";
-import { fmtAgo, fmtTime } from "@apistock/dash/lib/format";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Pill } from "@gorbital/dash/components/pill";
+import { Tile, TileGrid } from "@gorbital/dash/components/tile";
+import { Panel, KeyList } from "@gorbital/dash/components/panel";
+import { Badge } from "@gorbital/dash/components/badge";
+import { Table } from "@gorbital/dash/components/table";
+import { Split } from "@gorbital/dash/components/progress";
+import { theme } from "@gorbital/dash/theme";
+import { fmtAgo, fmtTime } from "@gorbital/dash/lib/format";
 import { mails, NOW, type Mail } from "@/lib/mock";
 
 const tone = { delivered: "ok", sent: "muted", bounced: "warn", queued: "info", failed: "danger" } as const;
@@ -75,7 +75,7 @@ export default function MailPage() {
             <Panel title="Preview" meta="rendered from template" flush>
               <div className="m-4 mt-2 overflow-hidden rounded-lg border border-hairline bg-[#fbfaf6] p-5 text-[#14140f]">
                 <div className="mb-4 flex items-center gap-2">
-                  <svg viewBox="0 0 16.6 14" className="h-3.5 w-auto"><rect x="2.6" y="0" width="14" height="3" fill="#d8ff3e" /><rect x="0" y="3.6667" width="14" height="3" fill="#14140f" /><rect x="0" y="7.3333" width="14" height="3" fill="#57564f" /><rect x="0" y="11" width="14" height="3" fill="#c9c6bc" /></svg>
+                  <svg viewBox="0 0 120 120" className="h-4 w-auto" aria-hidden="true"><circle cx="60" cy="60" r="42" fill="none" stroke="#14140f" strokeWidth="14" /><rect x="52" y="2" width="16" height="116" fill="#fbfaf6" transform="rotate(34 60 60)" /><rect x="54" y="6" width="12" height="108" fill="#C6F24A" transform="rotate(34 60 60)" /></svg>
                   <b className="text-[13px] tracking-tight">acme</b>
                 </div>
                 <h3 className="text-[15px] font-semibold leading-snug">New sign-in to your acme account</h3>

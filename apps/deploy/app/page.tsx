@@ -1,16 +1,16 @@
 import Link from "next/link";
 import { ArrowUpRight, GitCommitHorizontal, Rocket, Undo2 } from "lucide-react";
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Pill } from "@apistock/dash/components/pill";
-import { Tile, TileGrid } from "@apistock/dash/components/tile";
-import { Panel, Legend } from "@apistock/dash/components/panel";
-import { Badge, Dot } from "@apistock/dash/components/badge";
-import { Button } from "@apistock/dash/components/button";
-import { Bar } from "@apistock/dash/components/progress";
-import { BarChart } from "@apistock/dash/charts/bars";
-import { Sparkline } from "@apistock/dash/charts/sparkline";
-import { theme } from "@apistock/dash/theme";
-import { fmtAgo, fmtDuration } from "@apistock/dash/lib/format";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Pill } from "@gorbital/dash/components/pill";
+import { Tile, TileGrid } from "@gorbital/dash/components/tile";
+import { Panel, Legend } from "@gorbital/dash/components/panel";
+import { Badge, Dot } from "@gorbital/dash/components/badge";
+import { Button } from "@gorbital/dash/components/button";
+import { Bar } from "@gorbital/dash/components/progress";
+import { BarChart } from "@gorbital/dash/charts/bars";
+import { Sparkline } from "@gorbital/dash/charts/sparkline";
+import { theme } from "@gorbital/dash/theme";
+import { fmtAgo, fmtDuration } from "@gorbital/dash/lib/format";
 import { envs, releases, pipeline, days, perDay, leadTime, NOW } from "@/lib/mock";
 import { StatusBadge } from "@/components/status";
 

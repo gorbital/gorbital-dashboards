@@ -1,4 +1,4 @@
-import { rng, NOW, MIN, HOUR, DAY } from "@apistock/dash/lib/rand";
+import { rng, NOW, MIN, HOUR, DAY } from "@gorbital/dash/lib/rand";
 
 export { NOW, MIN, HOUR, DAY };
 const r = rng(777);
@@ -125,7 +125,7 @@ export const checks = [
   { name: "PostgreSQL", status: "ok", latency: "1.1 ms", detail: "pool 9/30 · replica lag 0 s" },
   { name: "Jobs leader", status: "ok", latency: "—", detail: "i-7f3a elected 2 min ago" },
   { name: "SMTP · mail.acme.dev", status: "warn", latency: "412 ms", detail: "1 timeout in the last hour" },
-  { name: "OTLP exporter", status: "ok", latency: "18 ms", detail: "→ ingest.gauge.apistock.dev" },
+  { name: "OTLP exporter", status: "ok", latency: "18 ms", detail: "→ ingest.gauge.gorbital.dev" },
   { name: "TLS · api.acme.dev", status: "ok", latency: "—", detail: "expires in 61 days · auto-renew" },
 ];
 export const uptime90 = Array.from({ length: 90 }, (_, i) => (i === 62 ? 0.4 : i === 78 ? 0.85 : i === 85 ? 0.97 : 1));

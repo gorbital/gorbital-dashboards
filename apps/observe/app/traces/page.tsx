@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Pill } from "@apistock/dash/components/pill";
-import { Panel, Legend } from "@apistock/dash/components/panel";
-import { Badge, StatusCode } from "@apistock/dash/components/badge";
-import { Table } from "@apistock/dash/components/table";
-import { spanKindColor } from "@apistock/dash/charts/waterfall";
-import { fmtMs, fmtTime } from "@apistock/dash/lib/format";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Pill } from "@gorbital/dash/components/pill";
+import { Panel, Legend } from "@gorbital/dash/components/panel";
+import { Badge, StatusCode } from "@gorbital/dash/components/badge";
+import { Table } from "@gorbital/dash/components/table";
+import { spanKindColor } from "@gorbital/dash/charts/waterfall";
+import { fmtMs, fmtTime } from "@gorbital/dash/lib/format";
 import { traces, type Trace } from "@/lib/mock";
 
 export default function Traces() {
@@ -46,7 +46,7 @@ export default function Traces() {
                     {t.spans
                       .filter((s) => s.depth > 0)
                       .map((s) => (
-                        <i key={s.id} className="h-full" style={{ width: `${Math.max(1.5, (s.duration / t.ms) * 100)}%`, background: s.error ? "#ff8f6b" : spanKindColor[s.kind], opacity: 0.85 }} />
+                        <i key={s.id} className="h-full" style={{ width: `${Math.max(1.5, (s.duration / t.ms) * 100)}%`, background: s.error ? "#FF5C2B" : spanKindColor[s.kind], opacity: 0.85 }} />
                       ))}
                   </div>
                 ),

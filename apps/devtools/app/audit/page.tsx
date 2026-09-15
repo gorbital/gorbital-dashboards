@@ -1,10 +1,10 @@
 import { AlertOctagon, AlertTriangle, Lightbulb, ExternalLink } from "lucide-react";
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Segmented } from "@apistock/dash/components/pill";
-import { Tile, TileGrid } from "@apistock/dash/components/tile";
-import { Panel } from "@apistock/dash/components/panel";
-import { Badge } from "@apistock/dash/components/badge";
-import { Button } from "@apistock/dash/components/button";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Segmented } from "@gorbital/dash/components/pill";
+import { Tile, TileGrid } from "@gorbital/dash/components/tile";
+import { Panel } from "@gorbital/dash/components/panel";
+import { Badge } from "@gorbital/dash/components/badge";
+import { Button } from "@gorbital/dash/components/button";
 import { findings } from "@/lib/mock";
 
 const meta = {
@@ -18,12 +18,12 @@ export default function Audit() {
   return (
     <>
       <PageHeader product="devtools" title="Audit" searchHint="Jump to route, module, setting">
-        <Badge tone="muted">aps audit · 41 rules · 0.8 s</Badge>
+        <Badge tone="muted">orb audit · 41 rules · 0.8 s</Badge>
         <Segmented options={[{ value: "all", label: "All" }, { value: "errors", label: "Errors" }, { value: "warnings", label: "Warnings" }, { value: "hints", label: "Hints" }]} value="all" />
       </PageHeader>
       <Page>
         <TileGrid>
-          <Tile label="Errors" value={String(n("error"))} delta="block aps release" deltaTone="bad" hero />
+          <Tile label="Errors" value={String(n("error"))} delta="block orb release" deltaTone="bad" hero />
           <Tile label="Warnings" value={String(n("warning"))} delta="−1 since yesterday" />
           <Tile label="Hints" value={String(n("hint"))} deltaTone="flat" delta="style and docs" />
           <Tile label="Rules passed" value="34" unit="of 41" delta="83%" deltaTone="flat" />

@@ -1,9 +1,9 @@
 import { Rocket, Undo2, Database, Flame, Scaling, SlidersHorizontal } from "lucide-react";
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Pill, Segmented } from "@apistock/dash/components/pill";
-import { Panel } from "@apistock/dash/components/panel";
-import { Badge } from "@apistock/dash/components/badge";
-import { fmtAgo, fmtDate } from "@apistock/dash/lib/format";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Pill, Segmented } from "@gorbital/dash/components/pill";
+import { Panel } from "@gorbital/dash/components/panel";
+import { Badge } from "@gorbital/dash/components/badge";
+import { fmtAgo, fmtDate } from "@gorbital/dash/lib/format";
 import { history, NOW, type Event } from "@/lib/mock";
 
 const meta: Record<Event["kind"], { Icon: typeof Rocket; tone: "accent" | "warn" | "info" | "danger" | "muted" | "violet" }> = {

@@ -1,11 +1,11 @@
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Panel } from "@apistock/dash/components/panel";
-import { Badge } from "@apistock/dash/components/badge";
-import { Button } from "@apistock/dash/components/button";
-import { Table } from "@apistock/dash/components/table";
-import { Split } from "@apistock/dash/components/progress";
-import { theme } from "@apistock/dash/theme";
-import { fmtDuration } from "@apistock/dash/lib/format";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Panel } from "@gorbital/dash/components/panel";
+import { Badge } from "@gorbital/dash/components/badge";
+import { Button } from "@gorbital/dash/components/button";
+import { Table } from "@gorbital/dash/components/table";
+import { Split } from "@gorbital/dash/components/progress";
+import { theme } from "@gorbital/dash/theme";
+import { fmtDuration } from "@gorbital/dash/lib/format";
 import { retention, NOW } from "@/lib/mock";
 
 type Row = (typeof retention)[number];

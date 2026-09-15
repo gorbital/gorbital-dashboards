@@ -1,11 +1,11 @@
 import { Play, AlertTriangle } from "lucide-react";
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Tile, TileGrid } from "@apistock/dash/components/tile";
-import { Panel } from "@apistock/dash/components/panel";
-import { Badge } from "@apistock/dash/components/badge";
-import { Button } from "@apistock/dash/components/button";
-import { Table } from "@apistock/dash/components/table";
-import { Code, Cmt } from "@apistock/dash/components/code";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Tile, TileGrid } from "@gorbital/dash/components/tile";
+import { Panel } from "@gorbital/dash/components/panel";
+import { Badge } from "@gorbital/dash/components/badge";
+import { Button } from "@gorbital/dash/components/button";
+import { Table } from "@gorbital/dash/components/table";
+import { Code, Cmt } from "@gorbital/dash/components/code";
 import { migrations } from "@/lib/mock";
 
 type Row = (typeof migrations)[number];

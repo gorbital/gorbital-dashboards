@@ -1,7 +1,7 @@
 "use client";
 
 import { Boxes, Database, Gauge, Mail, Route, ShieldCheck, SlidersHorizontal, Zap } from "lucide-react";
-import { Nav } from "@apistock/dash/components/nav";
+import { Nav } from "@gorbital/dash/components/nav";
 
 export function SidebarNav() {
   return (

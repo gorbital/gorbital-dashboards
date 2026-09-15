@@ -1,5 +1,5 @@
-import { rng, NOW, MIN, HOUR, DAY } from "@apistock/dash/lib/rand";
-import type { Span } from "@apistock/dash/charts/waterfall";
+import { rng, NOW, MIN, HOUR, DAY } from "@gorbital/dash/lib/rand";
+import type { Span } from "@gorbital/dash/charts/waterfall";
 
 export { NOW };
 

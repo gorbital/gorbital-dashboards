@@ -1,10 +1,10 @@
 import { Pencil, RotateCcw } from "lucide-react";
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Segmented } from "@apistock/dash/components/pill";
-import { Panel } from "@apistock/dash/components/panel";
-import { Badge, Dot } from "@apistock/dash/components/badge";
-import { Button } from "@apistock/dash/components/button";
-import { Table } from "@apistock/dash/components/table";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Segmented } from "@gorbital/dash/components/pill";
+import { Panel } from "@gorbital/dash/components/panel";
+import { Badge, Dot } from "@gorbital/dash/components/badge";
+import { Button } from "@gorbital/dash/components/button";
+import { Table } from "@gorbital/dash/components/table";
 import { settings, type Setting } from "@/lib/mock";
 
 export default function Settings() {

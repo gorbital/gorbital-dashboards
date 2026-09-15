@@ -1,11 +1,11 @@
 import { Play, History } from "lucide-react";
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Tile, TileGrid } from "@apistock/dash/components/tile";
-import { Panel } from "@apistock/dash/components/panel";
-import { Badge, Dot } from "@apistock/dash/components/badge";
-import { Button } from "@apistock/dash/components/button";
-import { Code, Cmt } from "@apistock/dash/components/code";
-import { fmtAgo, fmtMs } from "@apistock/dash/lib/format";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Tile, TileGrid } from "@gorbital/dash/components/tile";
+import { Panel } from "@gorbital/dash/components/panel";
+import { Badge, Dot } from "@gorbital/dash/components/badge";
+import { Button } from "@gorbital/dash/components/button";
+import { Code, Cmt } from "@gorbital/dash/components/code";
+import { fmtAgo, fmtMs } from "@gorbital/dash/lib/format";
 import { jobDefs, jobRuns, NOW } from "@/lib/mock";
 
 export default function Jobs() {

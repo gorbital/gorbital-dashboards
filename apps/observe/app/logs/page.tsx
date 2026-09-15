@@ -1,9 +1,9 @@
 import { Calendar, FileText, Plus, Search } from "lucide-react";
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Pill, Segmented } from "@apistock/dash/components/pill";
-import { Panel, Legend } from "@apistock/dash/components/panel";
-import { BarChart } from "@apistock/dash/charts/bars";
-import { theme } from "@apistock/dash/theme";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Pill, Segmented } from "@gorbital/dash/components/pill";
+import { Panel, Legend } from "@gorbital/dash/components/panel";
+import { BarChart } from "@gorbital/dash/charts/bars";
+import { theme } from "@gorbital/dash/theme";
 import { logs, hours, perHour } from "@/lib/mock";
 import { LogTable } from "@/components/log-table";
 

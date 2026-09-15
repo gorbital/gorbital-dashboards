@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronRight, ExternalLink } from "lucide-react";
-import { fmtDate } from "@apistock/dash/lib/format";
+import { fmtDate } from "@gorbital/dash/lib/format";
 import type { Log } from "@/lib/mock";
 
 const level: Record<Log["level"], { label: string; cls: string }> = {

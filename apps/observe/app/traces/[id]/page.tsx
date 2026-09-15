@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { ArrowLeft, Copy, ExternalLink } from "lucide-react";
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Panel, KeyList, Legend } from "@apistock/dash/components/panel";
-import { Badge, StatusCode } from "@apistock/dash/components/badge";
-import { Button } from "@apistock/dash/components/button";
-import { Code, Key, Str, Num, Cmt } from "@apistock/dash/components/code";
-import { Waterfall, spanKindColor } from "@apistock/dash/charts/waterfall";
-import { fmtMs, fmtDate } from "@apistock/dash/lib/format";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Panel, KeyList, Legend } from "@gorbital/dash/components/panel";
+import { Badge, StatusCode } from "@gorbital/dash/components/badge";
+import { Button } from "@gorbital/dash/components/button";
+import { Code, Key, Str, Num, Cmt } from "@gorbital/dash/components/code";
+import { Waterfall, spanKindColor } from "@gorbital/dash/charts/waterfall";
+import { fmtMs, fmtDate } from "@gorbital/dash/lib/format";
 import { traces } from "@/lib/mock";
 
 export function generateStaticParams() {
@@ -102,9 +102,9 @@ export default async function TraceDetail({ params }: { params: Promise<{ id: st
                 {"\n"}
                 <Key>http.status_code</Key>: <Num>{t.status}</Num>
                 {"\n"}
-                <Key>apistock.org</Key>: <Str>&quot;{t.org}&quot;</Str>
+                <Key>gorbital.org</Key>: <Str>&quot;{t.org}&quot;</Str>
                 {"\n"}
-                <Key>apistock.request_id</Key>: <Str>&quot;{t.requestId}&quot;</Str>
+                <Key>gorbital.request_id</Key>: <Str>&quot;{t.requestId}&quot;</Str>
                 {"\n"}
                 <Key>db.system</Key>: <Str>&quot;postgresql&quot;</Str>
                 {"\n"}

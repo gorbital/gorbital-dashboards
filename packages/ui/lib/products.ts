@@ -1,5 +1,5 @@
 /**
- * The three tools built around apistock. The `id` is the stable identifier
+ * The three tools built around gorbital. The `id` is the stable identifier
  * (folder, subdomain, package name); `name` is what the product is called
  * in every UI. Rename a product here and everywhere follows.
  */
@@ -24,8 +24,8 @@ export const products: Record<ProductId, Product> = {
     name: "Dev Portal",
     short: "Dev",
     kind: "devtools",
-    tagline: "Inspect the app on your bench while aps dev runs it.",
-    url: "https://devtools.apistock.dev",
+    tagline: "Inspect the app on your bench while orb dev runs it.",
+    url: "https://devtools.gorbital.dev",
     port: 3100,
   },
   observe: {
@@ -34,7 +34,7 @@ export const products: Record<ProductId, Product> = {
     short: "Observability",
     kind: "observability",
     tagline: "Requests, traces, jobs and errors from the data your app already sends.",
-    url: "https://observe.apistock.dev",
+    url: "https://observe.gorbital.dev",
     port: 3200,
   },
   deploy: {
@@ -43,7 +43,7 @@ export const products: Record<ProductId, Product> = {
     short: "Deploy",
     kind: "deploy",
     tagline: "Releases, rollouts, migrations and the fleet, from commit to running instance.",
-    url: "https://deploy.apistock.dev",
+    url: "https://deploy.gorbital.dev",
     port: 3300,
   },
 };

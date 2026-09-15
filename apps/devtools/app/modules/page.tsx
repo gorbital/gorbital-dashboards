@@ -1,9 +1,9 @@
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Segmented } from "@apistock/dash/components/pill";
-import { Panel, KeyList, Legend } from "@apistock/dash/components/panel";
-import { Badge } from "@apistock/dash/components/badge";
-import { Code, Key, Str, Cmt } from "@apistock/dash/components/code";
-import { theme } from "@apistock/dash/theme";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Segmented } from "@gorbital/dash/components/pill";
+import { Panel, KeyList, Legend } from "@gorbital/dash/components/panel";
+import { Badge } from "@gorbital/dash/components/badge";
+import { Code, Key, Str, Cmt } from "@gorbital/dash/components/code";
+import { theme } from "@gorbital/dash/theme";
 import { nodes, edges, type Node } from "@/lib/mock";
 
 const kindColor: Record<Node["kind"], string> = { app: theme.primary, handler: theme.text, module: theme.info, infra: theme.muted };

@@ -17,7 +17,7 @@ importers:
 
   apps/deploy:
     dependencies:
-      '@apistock/dash':
+      '@gorbital/dash':
         specifier: workspace:*
         version: link:../../packages/ui
       lucide-react:
@@ -33,7 +33,7 @@ importers:
         specifier: ^19.3.0
         version: 19.3.0(react@19.3.0)
     devDependencies:
-      '@apistock/tsconfig':
+      '@gorbital/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@tailwindcss/postcss':
@@ -57,7 +57,7 @@ importers:
 
   apps/devtools:
     dependencies:
-      '@apistock/dash':
+      '@gorbital/dash':
         specifier: workspace:*
         version: link:../../packages/ui
       lucide-react:
@@ -73,7 +73,7 @@ importers:
         specifier: ^19.3.0
         version: 19.3.0(react@19.3.0)
     devDependencies:
-      '@apistock/tsconfig':
+      '@gorbital/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@tailwindcss/postcss':
@@ -97,7 +97,7 @@ importers:
 
   apps/observe:
     dependencies:
-      '@apistock/dash':
+      '@gorbital/dash':
         specifier: workspace:*
         version: link:../../packages/ui
       lucide-react:
@@ -113,7 +113,7 @@ importers:
         specifier: ^19.3.0
         version: 19.3.0(react@19.3.0)
     devDependencies:
-      '@apistock/tsconfig':
+      '@gorbital/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@tailwindcss/postcss':
@@ -152,7 +152,7 @@ importers:
         specifier: ^19
         version: 19.3.0(react@19.3.0)
     devDependencies:
-      '@apistock/tsconfig':
+      '@gorbital/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/react':

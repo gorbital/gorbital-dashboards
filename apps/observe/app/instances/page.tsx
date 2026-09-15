@@ -1,12 +1,12 @@
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Pill } from "@apistock/dash/components/pill";
-import { Tile, TileGrid } from "@apistock/dash/components/tile";
-import { Panel, KeyList } from "@apistock/dash/components/panel";
-import { Badge, Dot } from "@apistock/dash/components/badge";
-import { Bar } from "@apistock/dash/components/progress";
-import { Sparkline } from "@apistock/dash/charts/sparkline";
-import { theme } from "@apistock/dash/theme";
-import { fmtDuration, fmtAgo } from "@apistock/dash/lib/format";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Pill } from "@gorbital/dash/components/pill";
+import { Tile, TileGrid } from "@gorbital/dash/components/tile";
+import { Panel, KeyList } from "@gorbital/dash/components/panel";
+import { Badge, Dot } from "@gorbital/dash/components/badge";
+import { Bar } from "@gorbital/dash/components/progress";
+import { Sparkline } from "@gorbital/dash/charts/sparkline";
+import { theme } from "@gorbital/dash/theme";
+import { fmtDuration, fmtAgo } from "@gorbital/dash/lib/format";
 import { instances, NOW } from "@/lib/mock";
 
 export default function Instances() {

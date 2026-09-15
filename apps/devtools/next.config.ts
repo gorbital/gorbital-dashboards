@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   output: "export",
   trailingSlash: false,
   images: { unoptimized: true },
-  transpilePackages: ["@apistock/dash"],
+  transpilePackages: ["@gorbital/dash"],
   agentRules: false,
   devIndicators: false,
 };

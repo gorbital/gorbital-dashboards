@@ -1,7 +1,7 @@
 "use client";
 
 import { Bell, Cloud, Database, HeartPulse, History, Layers, LayoutGrid, Rocket, Server } from "lucide-react";
-import { Nav } from "@apistock/dash/components/nav";
+import { Nav } from "@gorbital/dash/components/nav";
 
 export function SidebarNav() {
   return (

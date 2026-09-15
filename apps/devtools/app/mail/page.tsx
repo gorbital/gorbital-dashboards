@@ -1,10 +1,10 @@
 import { Trash2, Code2, Monitor } from "lucide-react";
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Segmented } from "@apistock/dash/components/pill";
-import { Panel, KeyList } from "@apistock/dash/components/panel";
-import { Badge } from "@apistock/dash/components/badge";
-import { Button } from "@apistock/dash/components/button";
-import { fmtAgo } from "@apistock/dash/lib/format";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Segmented } from "@gorbital/dash/components/pill";
+import { Panel, KeyList } from "@gorbital/dash/components/panel";
+import { Badge } from "@gorbital/dash/components/badge";
+import { Button } from "@gorbital/dash/components/button";
+import { fmtAgo } from "@gorbital/dash/lib/format";
 import { outbox, NOW } from "@/lib/mock";
 
 export default function MailPage() {
@@ -12,7 +12,7 @@ export default function MailPage() {
   return (
     <>
       <PageHeader product="devtools" title="Mail" searchHint="Jump to route, module, setting">
-        <Badge tone="muted">captured by aps dev · nothing leaves the bench</Badge>
+        <Badge tone="muted">captured by orb dev · nothing leaves the bench</Badge>
         <Button size="sm" kind="ghost" icon={<Trash2 size={11} />} className="ml-1">
           Clear outbox
         </Button>
@@ -66,7 +66,7 @@ export default function MailPage() {
             <div className="bg-[#efede6] p-8">
               <div className="mx-auto max-w-[520px] rounded-xl bg-[#fbfaf6] p-8 text-[#14140f] shadow-sm">
                 <div className="mb-6 flex items-center gap-2">
-                  <svg viewBox="0 0 16.6 14" className="h-4 w-auto"><rect x="2.6" y="0" width="14" height="3" fill="#d8ff3e" /><rect x="0" y="3.6667" width="14" height="3" fill="#14140f" /><rect x="0" y="7.3333" width="14" height="3" fill="#57564f" /><rect x="0" y="11" width="14" height="3" fill="#c9c6bc" /></svg>
+                  <svg viewBox="0 0 120 120" className="h-4 w-auto" aria-hidden="true"><circle cx="60" cy="60" r="42" fill="none" stroke="#14140f" strokeWidth="14" /><rect x="52" y="2" width="16" height="116" fill="#fbfaf6" transform="rotate(34 60 60)" /><rect x="54" y="6" width="12" height="108" fill="#C6F24A" transform="rotate(34 60 60)" /></svg>
                   <b className="text-[14px] tracking-tight">acme-api</b>
                 </div>
                 <h3 className="text-[20px] font-semibold leading-tight tracking-tight">You&apos;re invited to acme</h3>

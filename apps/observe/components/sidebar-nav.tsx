@@ -1,7 +1,7 @@
 "use client";
 
 import { Activity, AlertCircle, FileText, KeyRound, LayoutGrid, List, Mail, Server, Timer, Zap } from "lucide-react";
-import { Nav } from "@apistock/dash/components/nav";
+import { Nav } from "@gorbital/dash/components/nav";
 
 export function SidebarNav() {
   return (

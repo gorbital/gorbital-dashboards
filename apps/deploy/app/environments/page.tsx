@@ -1,9 +1,9 @@
 import { Globe, Rocket, Settings2 } from "lucide-react";
-import { Page, PageHeader } from "@apistock/dash/components/page";
-import { Panel, KeyList } from "@apistock/dash/components/panel";
-import { Badge, Dot } from "@apistock/dash/components/badge";
-import { Button } from "@apistock/dash/components/button";
-import { fmtAgo } from "@apistock/dash/lib/format";
+import { Page, PageHeader } from "@gorbital/dash/components/page";
+import { Panel, KeyList } from "@gorbital/dash/components/panel";
+import { Badge, Dot } from "@gorbital/dash/components/badge";
+import { Button } from "@gorbital/dash/components/button";
+import { fmtAgo } from "@gorbital/dash/lib/format";
 import { envs, instances, NOW } from "@/lib/mock";
 
 const toneOf = { healthy: "ok", rolling: "accent", degraded: "danger", idle: "muted" } as const;

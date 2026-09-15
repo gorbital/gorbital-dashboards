@@ -1,4 +1,4 @@
-import { rng, NOW, MIN, HOUR } from "@apistock/dash/lib/rand";
+import { rng, NOW, MIN, HOUR } from "@gorbital/dash/lib/rand";
 
 export { NOW };
 const r = rng(1234);
@@ -59,16 +59,16 @@ export const nodes: Node[] = [
   { id: "h.orgs", label: "orgs handlers", kind: "handler", x: 340, y: 150, pkg: "internal/app/orgs" },
   { id: "h.projects", label: "projects handlers", kind: "handler", x: 530, y: 150, pkg: "internal/app/projects" },
   { id: "h.ops", label: "ops handlers", kind: "handler", x: 720, y: 150, pkg: "internal/app/ops" },
-  { id: "auth", label: "modules/auth", kind: "module", x: 110, y: 280, pkg: "apistock.dev/modules/auth" },
-  { id: "orgs", label: "modules/orgs", kind: "module", x: 300, y: 280, pkg: "apistock.dev/modules/orgs" },
+  { id: "auth", label: "modules/auth", kind: "module", x: 110, y: 280, pkg: "gorbital.dev/modules/auth" },
+  { id: "orgs", label: "modules/orgs", kind: "module", x: 300, y: 280, pkg: "gorbital.dev/modules/orgs" },
   { id: "projects", label: "projects", kind: "module", x: 490, y: 280, pkg: "internal/projects" },
-  { id: "settings", label: "modules/settings", kind: "module", x: 680, y: 280, pkg: "apistock.dev/modules/settings" },
-  { id: "jobs", label: "modules/jobs", kind: "module", x: 830, y: 280, pkg: "apistock.dev/modules/jobs" },
-  { id: "mail", label: "modules/mail", kind: "module", x: 200, y: 400, pkg: "apistock.dev/modules/mail" },
-  { id: "audit", label: "audit", kind: "module", x: 400, y: 400, pkg: "apistock.dev/audit" },
-  { id: "telemetry", label: "telemetry", kind: "module", x: 600, y: 400, pkg: "apistock.dev/modules/telemetry" },
-  { id: "releases", label: "releases", kind: "module", x: 780, y: 400, pkg: "apistock.dev/modules/releases" },
-  { id: "pg", label: "postgres pool", kind: "infra", x: 330, y: 520, pkg: "apistock.dev/modules/postgres" },
+  { id: "settings", label: "modules/settings", kind: "module", x: 680, y: 280, pkg: "gorbital.dev/modules/settings" },
+  { id: "jobs", label: "modules/jobs", kind: "module", x: 830, y: 280, pkg: "gorbital.dev/modules/jobs" },
+  { id: "mail", label: "modules/mail", kind: "module", x: 200, y: 400, pkg: "gorbital.dev/modules/mail" },
+  { id: "audit", label: "audit", kind: "module", x: 400, y: 400, pkg: "gorbital.dev/audit" },
+  { id: "telemetry", label: "telemetry", kind: "module", x: 600, y: 400, pkg: "gorbital.dev/modules/telemetry" },
+  { id: "releases", label: "releases", kind: "module", x: 780, y: 400, pkg: "gorbital.dev/modules/releases" },
+  { id: "pg", label: "postgres pool", kind: "infra", x: 330, y: 520, pkg: "gorbital.dev/modules/postgres" },
   { id: "river", label: "river", kind: "infra", x: 560, y: 520, pkg: "github.com/riverqueue/river" },
   { id: "smtp", label: "smtp", kind: "infra", x: 130, y: 520, pkg: "net/smtp" },
   { id: "otel", label: "otlp exporter", kind: "infra", x: 770, y: 520, pkg: "go.opentelemetry.io/otel" },
@@ -108,7 +108,7 @@ export const findings: Finding[] = [
   { level: "error", rule: "ops/2fa-required", title: "Ops handler reachable without 2FA", where: "internal/app/ops/releases.go:31", detail: "ops.ReleasesCurrent is mounted with session middleware only. Every /ops/* route needs RequireTwoFactor before the platform-role check (ADR-0043)." },
   { level: "error", rule: "jobs/timeout", title: "Job has no timeout", where: "internal/jobs/reindex.go:14", detail: "projects.reindex declares no Timeout. River uses the client default (1m); a reindex over 20k rows takes longer and will be retried mid-way." },
   { level: "warning", rule: "sql/no-limit", title: "List query without LIMIT", where: "internal/projects/select_all.go:9", detail: "SELECT projects WHERE org_id = $1 has no LIMIT. Paginate with a cursor like the other list endpoints." },
-  { level: "warning", rule: "handlers/large", title: "Handler over 200 lines", where: "internal/app/orgs/handlers.go", detail: "orgs handlers are 287 lines. Split invites into their own file, as `aps gen resource` would." },
+  { level: "warning", rule: "handlers/large", title: "Handler over 200 lines", where: "internal/app/orgs/handlers.go", detail: "orgs handlers are 287 lines. Split invites into their own file, as `orb gen resource` would." },
   { level: "warning", rule: "settings/unused", title: "Setting declared but never read", where: "internal/settings/keys.go:22", detail: "projects.max_per_org has no config.Value reader. Either read it in projects.Create or remove it." },
   { level: "hint", rule: "mail/plaintext", title: "Template has no text/plain part", where: "internal/mail/templates/org_digest.html", detail: "Add org_digest.txt so mail clients that block HTML still show the digest." },
   { level: "hint", rule: "openapi/summary", title: "Operation missing summary", where: "internal/app/ops/audit.go:44", detail: "opsAuditStats has no summary; it shows as its operation ID in the API reference." },
@@ -131,7 +131,7 @@ export const jobRuns = [
   { id: "job_e5f6", job: "mail.send", state: "succeeded", ms: 402, at: NOW - 22 * MIN, out: "delivered sign_in_notice → you@localhost" },
 ];
 
-/* Outbox: mail the app sent while aps dev captured it. */
+/* Outbox: mail the app sent while orb dev captured it. */
 export const outbox = [
   { id: "msg_01", to: "ada@acme.dev", subject: "You're invited to acme on acme-api", template: "invite", at: NOW - 2 * MIN, size: "4.1 KB" },
   { id: "msg_02", to: "you@localhost", subject: "New sign-in to your acme-api account", template: "sign_in_notice", at: NOW - 22 * MIN, size: "3.2 KB" },

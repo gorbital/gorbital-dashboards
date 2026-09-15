@@ -5,7 +5,7 @@ const tone = { rolling: "accent", live: "ok", succeeded: "ok", failed: "danger",
 
 export function StatusBadge({ status }: { status: ReleaseStatus }) {
   return (
-    <Badge tone={tone[status]} className="w-[84px] justify-center">
+    <Badge tone={tone[status]} className="w-[96px] justify-center whitespace-nowrap">
       {status}
     </Badge>
   );

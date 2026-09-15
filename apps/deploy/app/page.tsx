@@ -74,10 +74,10 @@ export default function Overview() {
             {envs.map((e) => (
               <Link key={e.id} href="/environments" className="flex items-center gap-3 rounded-lg border border-hairline bg-bg/40 px-3 py-2.5 hover:border-border-2">
                 <Dot tone={e.status === "healthy" ? "ok" : e.status === "rolling" ? "accent" : e.status === "degraded" ? "danger" : "muted"} pulse={e.status === "rolling"} />
-                <span className="w-[120px] truncate text-[12.5px] font-medium">{e.name}</span>
-                <span className="font-mono text-[12px] text-text">{e.version}</span>
+                <span className="w-[110px] truncate text-[12.5px] font-medium">{e.name}</span>
+                <span className="whitespace-nowrap font-mono text-[12px] text-text">{e.version}</span>
                 <span className="font-mono text-[11px] text-dim">{e.commit}</span>
-                <span className="ml-auto font-mono text-[11px] text-dim tnum">
+                <span className="ml-auto whitespace-nowrap font-mono text-[11px] text-dim tnum">
                   {e.instances} inst · {e.rps} rps
                 </span>
               </Link>

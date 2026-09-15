@@ -53,7 +53,7 @@ export function Shell({ product, version, nav, app, user, searchHint, children }
         {nav}
 
         <div className="mt-auto flex items-center gap-2.5 px-2 text-[12px] text-muted">
-          <span className="grid h-[26px] w-[26px] place-items-center rounded-full bg-gradient-to-br from-primary-deep to-primary text-[10px] font-bold text-bg">
+          <span className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-full bg-primary font-mono text-[10px] font-semibold leading-none text-bg">
             {user.initials}
           </span>
           <span className="truncate">{user.name}</span>

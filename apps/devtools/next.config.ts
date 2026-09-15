@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   images: { unoptimized: true },
   transpilePackages: ["@apistock/dash"],
   agentRules: false,
+  devIndicators: false,
 };
 
 export default nextConfig;

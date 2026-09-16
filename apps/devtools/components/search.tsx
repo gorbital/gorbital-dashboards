@@ -30,6 +30,7 @@ export function Search({ hint }: { hint: string }) {
   if (status.data && state !== "building" && state !== "preparing") actions.push({ id: "app:restart", label: "Restart the app", hint: "rebuild", icon: <RotateCw size={13} />, group: "App", onSelect: () => restart.mutate() });
   if (state === "running") actions.push({ id: "app:stop", label: "Stop the app", hint: "stays stopped", icon: <Square size={13} />, group: "App", onSelect: () => stop.mutate() });
   if (state === "stopped") actions.push({ id: "app:start", label: "Start the app", hint: "no rebuild", icon: <Play size={13} />, group: "App", onSelect: () => start.mutate() });
+  if (status.data?.project.database) actions.push({ id: "jobs:new", label: "New job", hint: "form, CLI or code", icon: <Zap size={13} />, group: "App", href: "/jobs?new=1" });
   const routeItems: CommandItem[] = (routes.data?.routes ?? []).map((r) => ({
     id: `route:${r.method} ${r.path}`,
     label: `${r.method} ${r.path}`,

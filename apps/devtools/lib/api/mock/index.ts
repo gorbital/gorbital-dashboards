@@ -31,6 +31,7 @@ import {
   outputLines,
   portalStatus,
 } from "../../mock";
+import { initialJobSources, planJobMock, type PlannedJob } from "./jobs";
 import type {
   Accepted,
   AppAction,
@@ -43,6 +44,7 @@ import type {
   GeneratorResponse,
   JobDefinition,
   JobRun,
+  JobSource,
   OpsSetting,
   OpsSettingChange,
   OutputLine,
@@ -115,6 +117,12 @@ async function restart() {
   addLine("orb", `starting app (pid ${pid}) on ${app.addr}`);
   await wait(300);
   addLine("app", 'level=INFO msg="listening" addr=127.0.0.1:8080');
+  for (const job of pendingJobs) {
+    definitions = [...definitions, job.definition];
+    sources = [...sources, job.source];
+    addLine("app", `level=INFO msg="job registered" name=${job.definition.name} schedule="${job.definition.config.schedule || "on demand"}"`);
+  }
+  pendingJobs = [];
 }
 
 const actions: Record<AppAction, () => Problem | undefined> = {
@@ -146,6 +154,9 @@ let history: Record<string, OpsSettingChange[]> = Object.fromEntries(Object.entr
 let definitions: JobDefinition[] = opsJobDefinitions.map((d) => ({ ...d, config: { ...d.config } }));
 let runs: JobRun[] = [...opsJobRuns];
 let queues: Queue[] = opsQueues.map((q) => ({ ...q }));
+let sources: JobSource[] = initialJobSources(opsJobDefinitions);
+/** Jobs applied by the generator, registered when the app restarts (the real app needs the rebuild too). */
+let pendingJobs: PlannedJob[] = [];
 let suppressions: Suppression[] = [...opsSuppressions];
 let nextRunId = Math.max(...opsJobRuns.map((r) => r.id)) + 1;
 let nextChangeId = 10;
@@ -163,6 +174,8 @@ export function resetMock() {
   definitions = opsJobDefinitions.map((d) => ({ ...d, config: { ...d.config } }));
   runs = [...opsJobRuns];
   queues = opsQueues.map((q) => ({ ...q }));
+  sources = initialJobSources(opsJobDefinitions);
+  pendingJobs = [];
   suppressions = [...opsSuppressions];
   nextRunId = Math.max(...opsJobRuns.map((r) => r.id)) + 1;
   nextChangeId = 10;
@@ -351,8 +364,21 @@ export async function mockFetch(input: string, init: RequestInit = {}): Promise<
     if (!portalStatus.generators.includes(gen[1])) return problemResponse(problem(404, "generator_not_found", `no generator ${gen[1]}; this orb has: ${portalStatus.generators.join(", ")}`));
     const body = parseBody(init);
     if (!body) return problemResponse(problem(400, "invalid_json", "the body must be JSON"));
-    return json(plan(gen[1], (body.input as Record<string, unknown> | undefined) ?? {}, gen[2] === "apply"));
+    const input = (body.input as Record<string, unknown> | undefined) ?? {};
+    if (gen[1] === "job") {
+      const planned = planJobMock(input, [...definitions.map((d) => d.name), ...pendingJobs.map((j) => j.definition.name)], gen[2] === "apply");
+      if ("problem" in planned) return problemResponse(planned.problem);
+      if (gen[2] === "apply") {
+        // The sample repository has an uncommitted migration (the one the Database page shows pending).
+        if (!body.allow_dirty) return problemResponse(problem(422, "generator_failed", "the git repository has uncommitted changes; commit or stash them first, or pass --allow-dirty"));
+        pendingJobs = [...pendingJobs, planned];
+        addLine("orb", `orb gen job ${planned.response.plan.name}: wrote ${planned.response.plan.changes.length} files; restart the app to register ${planned.definition.name}`);
+      }
+      return json(planned.response);
+    }
+    return json(plan(gen[1], input, gen[2] === "apply"));
   }
+  if (p === "/_portal/api/jobs" && method === "GET") return json({ jobs: sources });
   if (p.startsWith("/_portal/api/db/sql/")) return mockSqlFetch(p, method, init) ?? problemResponse(problem(404, "not_found", `no portal endpoint ${method} ${p}`));
   if (p.startsWith("/_portal/api/db/")) return mockDbFetch(url, method, init);
   if (p.startsWith("/_portal/app/")) return appProxy(p.slice("/_portal/app".length), url.searchParams, method, init);

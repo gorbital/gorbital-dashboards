@@ -147,6 +147,75 @@ export type GeneratorResponse = {
   applied: boolean;
 };
 
+/* ---------- Jobs in code (GET /_portal/api/jobs, ADR-0071) ---------- */
+
+export type JobKind = "custom" | "http" | "sql" | "email" | "dispatch";
+
+/** The `//orb:job` marker above a generated definition: the kind, its fields, and the worker file's hash. */
+export type JobMarkerForm = {
+  kind: JobKind | string;
+  http_method?: string;
+  http_url?: string;
+  http_body?: string;
+  sql?: string;
+  email_to?: string;
+  email_subject?: string;
+  email_text?: string;
+  dispatch_target?: string;
+  /** `sha256:…` of the worker file as generated. */
+  worker?: string;
+};
+
+/** A job as it is in the app's code: its files, and the form that made it while the worker is untouched. */
+export type JobSource = {
+  /** The definition's name (`ping_health`), what `/ops/jobs/definitions` calls it. */
+  name: string;
+  /** The Go identifier (`PingHealth`). */
+  ident: string;
+  package: string;
+  /** `internal/app/job_<name>.go`. */
+  definition: string;
+  /** `internal/jobs/<package>/<package>.go`. */
+  worker: string;
+  /** The definition carries an `//orb:job` marker. */
+  generated: boolean;
+  /** Generated, but the worker no longer hashes to the marker: edited in code. */
+  ejected: boolean;
+  /** The marker's kind for a generated job that isn't ejected; `custom` otherwise. */
+  kind: JobKind | string;
+  form?: JobMarkerForm;
+};
+
+export type JobSourceList = { jobs: JobSource[] | null };
+
+export type JobTrigger = "schedule" | "interval" | "manual";
+
+/** `orb gen job`'s answers as `generators/job` takes them; unknown fields are refused, so send only these. */
+export type JobGeneratorInput = {
+  name: string;
+  description?: string;
+  trigger?: JobTrigger;
+  schedule?: string;
+  every?: string;
+  timeout?: string;
+  max_attempts?: number;
+  queue?: string;
+  priority?: number;
+  disabled?: boolean;
+  kind?: JobKind;
+  method?: string;
+  url?: string;
+  body?: string;
+  sql?: string;
+  to?: string;
+  subject?: string;
+  text?: string;
+  dispatch?: string;
+};
+
+/** `plan.result` of the job generator. */
+export type JobGeneratorResult = { name: string; definition: string; files: string[]; dry_run: boolean };
+
 /* ---------- Dev console (/_dev/*) ---------- */
 
 export type DevIndex = {

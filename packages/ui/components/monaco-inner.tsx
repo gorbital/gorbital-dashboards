@@ -29,6 +29,7 @@ import "monaco-editor/features/smartSelect/register";
 import "monaco-editor/features/caretOperations/register";
 import "monaco-editor/features/placeholderText/register";
 import "monaco-editor/languages/definitions/pgsql/register";
+import "monaco-editor/languages/definitions/go/register";
 import { Editor, loader, type Monaco } from "@monaco-editor/react";
 import { useEffect, useRef } from "react";
 import { EditorSkeleton, type EditorHandle, type MonacoEditorProps, type SqlCatalog } from "./monaco";

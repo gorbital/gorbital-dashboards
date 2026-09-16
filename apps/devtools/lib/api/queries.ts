@@ -18,11 +18,16 @@ import type {
   DevMigrations,
   DevRequestList,
   DevRouteList,
+  GeneratorRequest,
+  GeneratorResponse,
   JobDefinition,
   JobDefinitionList,
+  JobGeneratorInput,
   JobRun,
   JobRunPage,
   JobsOverview,
+  JobSource,
+  JobSourceList,
   MailStatus,
   OpsSetting,
   OpsSettingHistory,
@@ -55,6 +60,7 @@ export const keys = {
   settings: ["ops", "settings"] as const,
   settingHistory: (key: string) => ["ops", "settings", key, "history"] as const,
   jobDefinitions: ["ops", "jobs", "definitions"] as const,
+  jobSources: ["portal", "jobs"] as const,
   jobsScheduled: ["ops", "jobs", "scheduled"] as const,
   jobsOverview: ["ops", "jobs", "overview"] as const,
   jobRuns: (filter: JobRunFilter) => ["ops", "jobs", "runs", filter] as const,
@@ -355,8 +361,56 @@ export function useQueues(enabled: boolean) {
   });
 }
 
+/** `GET /_portal/api/jobs`: the app's jobs as they are in code (ADR-0071): files, kind, the marker's form, ejected. */
+export function useJobSources(enabled: boolean) {
+  return useQuery({
+    queryKey: keys.jobSources,
+    queryFn: async () => (await apiFetch<JobSourceList>("/_portal/api/jobs")).jobs ?? [],
+    enabled,
+    refetchInterval: 15_000,
+    retry,
+  });
+}
+
+/** `POST /_portal/api/generators/job/plan`: the files `orb gen job` would write, with `before` for the modified ones. 422 `generator_failed` carries the usage error. */
+export function planJob(input: JobGeneratorInput): Promise<GeneratorResponse> {
+  return apiFetch<GeneratorResponse>("/_portal/api/generators/job/plan", { method: "POST", json: { input } satisfies GeneratorRequest<JobGeneratorInput> });
+}
+
+/** `POST /_portal/api/generators/job/apply`: writes the plan; refused on a dirty git tree unless `allowDirty`. The app must restart for the job to exist. */
+export function applyJob(input: JobGeneratorInput, allowDirty: boolean): Promise<GeneratorResponse> {
+  return apiFetch<GeneratorResponse>("/_portal/api/generators/job/apply", { method: "POST", json: { input, allow_dirty: allowDirty || undefined } satisfies GeneratorRequest<JobGeneratorInput> });
+}
+
+/**
+ * Asks `/ops/jobs/definitions` every 2 s until `name` is among them (the
+ * restarted app registers it) or `timeoutMs` passes; answers the definition
+ * or undefined. A refused or unanswered request (the app is still building)
+ * is just another try.
+ */
+export async function waitForJobDefinition(name: string, timeoutMs = 120_000, signal?: AbortSignal): Promise<JobDefinition | undefined> {
+  const until = Date.now() + timeoutMs;
+  while (Date.now() < until && !signal?.aborted) {
+    try {
+      const list = (await apiFetch<JobDefinitionList>("/_portal/app/ops/jobs/definitions")).definitions ?? [];
+      const found = list.find((d) => d.name === name);
+      if (found) return found;
+    } catch {
+      // The app is restarting; try again.
+    }
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+  return undefined;
+}
+
+/** A source for a definition, by name; undefined while the sources haven't loaded or for a job the portal doesn't see in code. */
+export function sourceFor(sources: JobSource[] | undefined, name: string): JobSource | undefined {
+  return sources?.find((s) => s.name === name);
+}
+
 function invalidateJobs(qc: ReturnType<typeof useQueryClient>) {
   void qc.invalidateQueries({ queryKey: ["ops", "jobs"] });
+  void qc.invalidateQueries({ queryKey: keys.jobSources });
   void qc.invalidateQueries({ queryKey: keys.queues });
 }
 

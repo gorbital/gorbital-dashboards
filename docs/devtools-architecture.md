@@ -20,8 +20,9 @@ apps/devtools
 │   ├── overview/           Overview (with the health panel), OutputConsole, ConnectionProblem
 │   ├── routes/             the route list and the request builder
 │   ├── requests/, logs/    the two live-tailed pages; logs/log-line.tsx is the expandable record both use
-│   ├── modules/, audit/, jobs/, settings/, database/, mail/
+│   ├── modules/, audit/, settings/, database/, mail/
 │   ├── auth/               the Authentication screen (Phase 5, below)
+│   ├── jobs/               the Jobs screen (Phase 6, below): the list, the New job sheet, the job detail, the plan diff
 │   ├── shared/             Gate, ProblemPanel, ReasonDialog, QueryParam, KeyValueEditor (below)
 │   ├── table-editor/       the Table Editor (Phase 2, below)
 │   ├── sql-editor/         SqlEditor, SnippetTree, Toolbar, Results, ExplainView, the dialogs
@@ -38,6 +39,7 @@ apps/devtools
     ├── time.ts             clock, when, ago and between, for tables
     ├── use-now.ts          a ticking clock for uptimes and "ago"
     ├── table-editor/       the Table Editor's pure logic: URL state, literals, CSV, plan builders
+    ├── jobs/               the Jobs screen's pure logic: schedule → English, the line diff, the New job form
     ├── sql-editor/         the SQL Editor's pure logic: exports, plan tree, name rules, run requests, drafts
     └── api/                the data layer (below)
 ```
@@ -51,7 +53,7 @@ serves `out/` at `http://127.0.0.1:3100` and resolves `/routes` to
 
 | File | What it is |
 |---|---|
-| `types.ts` | Hand-written TypeScript for everything the UI reads: the portal API (`Status`, `AppStatus`, `OutputLine`, `PortalEvent`, generators), the dev console (`DevApp`, `DevRouteList`, `DevRequestList`, `DevLogList`, `DevConfigList`, `DevMigrations`, `DevJobRunList`, `DevMail`, `DevStreamEvent`) and the ops API (`OpsSetting`, `OpsSettingChange`, `JobDefinition`, `JobRun`, `JobsOverview`, `Queue`, `AuditEvent`, `AuditStats`, `SystemInfo`, `MailStatus`, `Suppression`, `CurrentRelease` and the request bodies), matching the Go types, `modules/devconsole/openapi.json` and `examples/full-single/api/openapi.json` field for field. Errors are `Problem` (RFC 9457). |
+| `types.ts` | Hand-written TypeScript for everything the UI reads: the portal API (`Status`, `AppStatus`, `OutputLine`, `PortalEvent`, generators), the dev console (`DevApp`, `DevRouteList`, `DevRequestList`, `DevLogList`, `DevConfigList`, `DevMigrations`, `DevJobRunList`, `DevMail`, `DevStreamEvent`) and the ops API (`OpsSetting`, `OpsSettingChange`, `JobDefinition`, `JobRun`, `JobsOverview`, `Queue`, `AuditEvent`, `AuditStats`, `SystemInfo`, `MailStatus`, `Suppression`, `CurrentRelease` and the request bodies) and the jobs in code (`JobSource`, `JobMarkerForm`, `JobGeneratorInput`, ADR-0071), matching the Go types, `modules/devconsole/openapi.json` and `examples/full-single/api/openapi.json` field for field. Errors are `Problem` (RFC 9457). |
 | `client.ts` | `apiFetch<T>(path, init)`: same-origin fetch with the cookie, the `X-Orb-Portal: 1` header on anything but GET/HEAD, JSON in and out. A problem response becomes `ApiError { status, code, detail, title, unauthorized }`; a request that never gets an answer becomes `NotConnectedError`. `subscribeSSE(path, onMessage, onStatus)`: any `text/event-stream` on the origin, with reconnects (below); `subscribeEvents` wraps it for the portal's own stream, `parseDevStreamEvent` reads the console's. |
 | `sse.ts` | `createSSEParser`: an incremental `text/event-stream` parser (any chunking, multi-line `data:`, comments, CRLF). `readSSE`: drives it from a `ReadableStream` until the stream ends or a signal aborts. |
 | `live.ts` | `useLiveTail<T>({ path, event, enabled, max })`: follows a console stream and keeps the newest items; `mergeTail` folds the list endpoint's backlog in behind them without duplicates. |
@@ -61,7 +63,7 @@ serves `out/` at `http://127.0.0.1:3100` and resolves `/routes` to
 | `bearer-token.ts` | `storeBearerToken`, `readBearerToken`, `clearBearerToken`: the token "Act as user" hands to the Routes page's request builder, in `sessionStorage` (this tab only), never in the query string. |
 | `setting-value.ts` | Typed input for runtime settings: `formatSettingValue` and `parseSettingValue` per kind (`bool`, `int`, `float`, `string`, `enum`, `duration`, `string_list`) against the constraints (`min`, `max`, `one_of`, `max_len`, `max_items`, `format`), Go durations (`durationMs`, `shortDuration`), `describeConstraints` for the hint line. |
 | `store.ts` | The console store: the latest `AppStatus` from the stream, the output tail (capped at 2,000 lines like orb's own buffer), the dropped count and the connection state, read with `useConsole()` (`useSyncExternalStore`). `mergeLines` folds `/output` into what the stream delivered without duplicates and in time order. |
-| `queries.ts` | React Query hooks. Portal: `useStatus` (every 5 s), `useCapabilities` (what the status says the app can answer: `running`, `console`, `ops`, `database`), `useOutput`, `useReadiness`, `useAppAction`, `useMigrate`. Console: `useDevApp`, `useDevRoutes`, `useDevRequests`, `useDevLogs`, `useDevMigrations`, `useDevMail`. Ops: `useSettings`, `useSettingHistory`, `useSetSetting`, `useResetSetting`, `useJobDefinitions`, `useScheduledJobs`, `useJobsOverview`, `useJobRuns` (infinite, by cursor), `useRunJob`, `useUpdateJobDefinition`, `useResetJobDefinition`, `useRunAction("retry" \| "cancel")`, `useQueues`, `useQueueAction("pause" \| "resume")`, `useAudit` (infinite), `useAuditStats`, `useSystem`, `useOpsMail`, `useSendTestEmail`, `useSuppressions`, `useRemoveSuppression`, `useCurrentReleases`. Mutations toast on both outcomes and invalidate what they change; the settings and job definition ones leave `*_reason_required` and `*_version_conflict` to the form. Nothing is retried that won't change on its own (not connected, 4xx). |
+| `queries.ts` | React Query hooks. Portal: `useStatus` (every 5 s), `useCapabilities` (what the status says the app can answer: `running`, `console`, `ops`, `database`), `useOutput`, `useReadiness`, `useAppAction`, `useMigrate`. Console: `useDevApp`, `useDevRoutes`, `useDevRequests`, `useDevLogs`, `useDevMigrations`, `useDevMail`. Ops: `useSettings`, `useSettingHistory`, `useSetSetting`, `useResetSetting`, `useJobDefinitions`, `useScheduledJobs`, `useJobsOverview`, `useJobRuns` (infinite, by cursor), `useRunJob`, `useUpdateJobDefinition`, `useResetJobDefinition`, `useRunAction("retry" \| "cancel")`, `useQueues`, `useQueueAction("pause" \| "resume")`, `useJobSources` (`GET /_portal/api/jobs`), `planJob`/`applyJob` (the job generator), `waitForJobDefinition` (polls the definitions after a restart), `useAudit` (infinite), `useAuditStats`, `useSystem`, `useOpsMail`, `useSendTestEmail`, `useSuppressions`, `useRemoveSuppression`, `useCurrentReleases`. Mutations toast on both outcomes and invalidate what they change; the settings and job definition ones leave `*_reason_required` and `*_version_conflict` to the form. Nothing is retried that won't change on its own (not connected, 4xx). |
 | `provider.tsx` | `DevtoolsProvider`: the `QueryClient`, the `Toaster`, the `TooltipProvider`, and the one events subscription for the whole app. |
 | `sql.ts` | The SQL Editor's types (`RunRequest`, `RunResult`, `StatementResult`, `RunError`, `Warning`, `Template`, `Snippet`, `HistoryEntry`, `MigrationResponse`, the EXPLAIN `PlanNode`) and hooks: `useSqlTemplates`, `useSnippets`, `useSqlHistory`, `useSqlCatalogTables`/`useSqlCatalogColumns` (for completion), `useRunSql`, `useExplainSql`, `useCheckSql`, `useSaveSnippet`, `useDeleteSnippet`, `useClearHistory`, `useSaveMigration`. |
 | `mode.ts` | `dataMode()`: `"live"` or `"mock"` (below). |
@@ -193,7 +195,8 @@ otherwise when the build set `NEXT_PUBLIC_DEVTOOLS_DATA=mock`, otherwise
 The mock is an `orb dev` in memory: it answers `/_portal/api/status`,
 `/output`, `/events`, the app actions (with the same 409 refusals and the
 same `X-Orb-Portal` check), `app/migrate` (pending goes to 0 after 1.5 s,
-with orb lines in the console), the generator `plan`/`apply` endpoints,
+with orb lines in the console), the generator `plan`/`apply` endpoints (the
+job one in `lib/api/mock/jobs.ts`, below), `/_portal/api/jobs`,
 `/_portal/app/readyz`, every `/_dev/*` endpoint and its two streams, and
 the `/ops/*` endpoints the pages use, all from `lib/mock.ts`
 (`portalStatus`, `outputLines`, `devApp`, `devRoutes`, `devConfig`,
@@ -294,6 +297,100 @@ lib/api/mock/auth.ts              the mock (below)
 
 **Mock mode.** `lib/api/mock/auth.ts` keeps five accounts (the administrator with TOTP and a passkey, an `ops_viewer` with two sessions, a Google identity and a pending reset code, an unverified account with a verification code, a banned one, and one with GitHub only), answers every endpoint with the app's status and problem codes (`invalid_cursor`, `user_not_found`, `email_taken`, `weak_password`, `unknown_role`, `account_banned` on impersonating a banned account, `rate_limiter_not_found`), the eleven sign-in methods and three limiters with a few keys that answer `reset: true` once. `opsProxy` hands `/ops/auth/*` to it before its own routes; `resetMock` resets it.
 
+## Jobs (`/jobs`)
+
+Phase 6 (roadmap items 51–57, [ADR-0071](../../gorbital/docs/adr/0071-job-kinds-and-ejection.md)):
+the definitions with their schedule in plain English, a job made three ways
+(form, CLI, code), the visual view of a form-made job read back from its
+`//orb:job` marker, ejection, the run history with per-run logs, and the
+queues and the scheduled view.
+
+```
+components/jobs
+├── jobs.tsx            the page: tiles, the definitions (plain-English schedule, active toggle, source badge),
+│                       the runs, the queues (depth, throughput), the scheduled list; ?job= opens the detail, ?new=1 the sheet
+├── job-detail.tsx      JobDetailSheet: Overview (source, marker fields, files), Runs (history, per-run logs, retry, cancel),
+│                       Configure (the Phase 1 edit form, now JobConfigForm); SourceBadge
+├── new-job-sheet.tsx   NewJobSheet: tabs Form / CLI / Code; plan → diff → apply → restart → wait for the definition
+└── plan-diff.tsx       PlanView and PlanFile (a created file in full, a modified one as hunks), CopyButton
+lib/jobs
+├── schedule.ts         describeSchedule: cron and descriptors → "every weekday at 09:00"; the raw expression when unsure
+├── diff.ts             lineDiff (an LCS on lines), diffHunks, unifiedDiff, diffStat
+└── form.ts             JobForm, the presets, validateJobForm, toGeneratorInput, toCommand (orb gen job …),
+                        formFromSource (Duplicate as new), jobNames (orb's name derivation), workerTemplate
+```
+
+**Two sources, joined by name.** `/ops/jobs/definitions` is what the running
+app registered (config, defaults, next and last run); `GET /_portal/api/jobs`
+is what is in the app's code: for every job its `ident`, `package`,
+`definition` and `worker` files, `generated` (the definition carries an
+`//orb:job` marker), `ejected` (the worker no longer hashes to the marker),
+`kind` and `form` (the marker's fields). The page joins them on `name` and
+shows the definition with a badge: **Made with the form** (generated, not
+ejected; the detail shows the marker's fields read-only: method and URL,
+the statement, the message, the target), **Ejected: edit in code** (the
+worker was edited; the form never offers to overwrite it) or **Custom
+(code)** (no marker). A generated job gets **Duplicate as new**, which
+pre-fills the New job form from the marker and the definition's defaults;
+there is no "edit" for existing jobs, because the generator refuses files
+that exist.
+
+**New job.** The sheet has three tabs over one form state (`lib/jobs/form.ts`):
+
+- *Form*: name (with the derived `ident · definition · package`),
+  description, trigger (schedule with presets or a raw cron, interval with
+  presets or a raw duration, on demand; the plain-English reading under it),
+  timeout, attempts, queue, priority, enabled, and the kind: custom, HTTP
+  request (method, URL, JSON body), SQL (a statement in the Monaco editor,
+  `pgsql`), Email (to, subject, text), Dispatch (a definition from the
+  list). *Preview* posts `generators/job/plan`; the answer's `changes` are
+  rendered per file (a created file in full, a modified one as a diff of
+  `before` against `content`, with `+n −m`), with the plan's `next` steps.
+  *Create* posts `generators/job/apply` (with `allow_dirty` from the
+  checkbox; a dirty tree is refused with the hint to tick it). The files are
+  on disk but the app doesn't know the job until it rebuilds, so the footer
+  offers *Restart the app*: it posts `app/restart`, waits 2.5 s, then polls
+  `/ops/jobs/definitions` every 2 s (up to 2 min) until the definition is
+  there, invalidates the jobs queries and opens the new job's detail. The
+  portal's usage errors (422 `generator_failed`, `--url must be an http or
+  https URL`…) are shown under the field the flag names and in a banner.
+- *CLI*: the equivalent `orb gen job …` (only the flags that differ from
+  the defaults, shell-quoted, `--allow-dirty` when the checkbox is on) with
+  a copy button.
+- *Code*: what the custom kind means, the files the generator will write
+  (from the plan once previewed, else derived from the name) with the one to
+  open, and the worker in a read-only Monaco editor (`go`): the plan's file
+  once previewed, the custom template before that, with a copy button.
+
+**Detail.** *Runs* lists the definition's runs (`/ops/jobs/runs?kind=`,
+25 a page) and expands one to its timings, errors per attempt, the
+request ID (linked to Logs), and its logs: the dev console's records whose
+`job_id` attribute is the run's ID (generated workers log one line per run;
+failures carry `job_id` and `job_kind`), with "open in Logs" carrying
+`?q=job_id=<id>` (the Logs page pre-fills its text filter from `?q=`).
+Arguments are never returned by the ops API, and the page says so. *Configure*
+is the Phase 1 form (schedule, timeout, attempts, queue, priority, with a
+reason for risky changes).
+
+**Queues and scheduled.** `/ops/queues` only carries `paused`; depth is
+`available + scheduled + retryable` from `/ops/jobs/overview`, and
+throughput is derived on the client from the last 100 completed runs
+(`/ops/jobs/runs?state=completed&limit=100`): completed in the last hour
+per queue, scaled up when the loaded runs don't reach back an hour. The
+scheduled list shows each job's plain-English schedule, the raw expression,
+and the next run as "in 5m · 23:10:02".
+
+**Mock mode.** `lib/api/mock/jobs.ts` answers `/_portal/api/jobs` for the
+sample definitions (`audit.rollup` sql, `invites.expire` http,
+`projects.reindex` dispatch, `sessions.prune` generated but ejected, the
+rest hand-written) and the job generator: `plan` validates like the CLI
+(the same usage messages), renders the four files with `before` for
+`internal/app/jobs.go` and the marker in the definition, and refuses an
+existing name with 409 `plan_conflict`; `apply` refuses without
+`allow_dirty` (the sample repository is dirty), then keeps the job aside
+until `app/restart` completes, when it appears in `/ops/jobs/definitions`
+and `/_portal/api/jobs`, as with the real app.
+
 ## Primitives (`packages/ui/components`)
 
 Everything is styled with the theme's tokens only: 12–13 px text, mono
@@ -388,7 +485,7 @@ the page with a skeleton and never runs Monaco on the server.
 `monaco-inner.tsx` imports the editor **from the npm package**, not a CDN:
 `monaco-editor/editor/editor.api` plus the contributions the editor needs
 (`monaco-editor/features/{bracketMatching,find,suggest,hover,comment,…}/register`)
-and the language (`monaco-editor/languages/definitions/pgsql/register`), then
+and the languages (`monaco-editor/languages/definitions/{pgsql,go}/register`; Go for the Jobs screen's Code tab), then
 `loader.config({ monaco })` hands that instance to `@monaco-editor/react`, whose
 loader otherwise fetches `monaco-editor@x/min/vs` from jsdelivr (the URL is
 still in the bundle as the loader's default; it's never requested). The
@@ -566,6 +663,7 @@ apply, roll back or redo, changing the catalog as they go.
   is the way to override it until the proxy learns an opt-out.
 - `/_dev/config` (the environment as the app read it) has a type and a
   mock but no page yet.
-- The generator endpoints have types and a mock but no UI.
+- The generator endpoints have types and a mock; the job one has a UI
+  (Jobs, Phase 6), the resource and migration ones don't yet.
 - The version in the shell reads `portal.version` (the orb version); the
   fallback before the portal answers is still `v0.1`.

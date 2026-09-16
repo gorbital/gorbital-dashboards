@@ -113,9 +113,12 @@ stream, with the log records of a request), Logs (live-tailed records with
 level and attribute filters), Modules (what the running app wired:
 libraries, API modules with route counts, jobs, settings, flags and
 permission catalogs), Audit (the app's audit log with filters, stats and
-cursor pagination), Jobs (definitions with Run now, enable, disable, edit and
-reset; runs with retry and cancel; queues with pause and resume; the
-scheduled list), Mail (the Mailpit inbox, the delivery configuration, a test
+cursor pagination), Jobs (definitions with the schedule in plain English, an
+active toggle, Run now, edit and reset; a new job by form, CLI command or
+code through `orb gen job` with a diff preview and a restart; form-made jobs
+shown as a form again from their marker, or "Ejected" once edited; run
+history with per-run logs, retry and cancel; queues with depth, throughput,
+pause and resume; the scheduled list), Mail (the Mailpit inbox, the delivery configuration, a test
 email and the suppression list), Settings (runtime settings grouped, a typed
 editor with reasons and version conflicts, reset and history), Authentication
 (accounts with search and paging; an account's sessions, passkeys, linked

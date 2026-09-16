@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { mockFetch, resetMock } from "./index";
-import type { Accepted, DevApp, DevRouteList, JobDefinition, JobRun, OpsSetting, Problem, Queue, Status, SystemInfo } from "../types";
+import type { Accepted, DevApp, DevRouteList, GeneratorResponse, JobDefinition, JobDefinitionList, JobRun, JobSourceList, OpsSetting, Problem, Queue, Status, SystemInfo } from "../types";
 
 const post = (path: string) => mockFetch(path, { method: "POST", headers: { "X-Orb-Portal": "1" } });
 
@@ -145,5 +145,86 @@ describe("mockFetch", () => {
     expect(text).toMatch(/event: log\ndata: \{"time":"/);
     ac.abort();
     expect((await reader.read()).done).toBe(true);
+  }, 10_000);
+});
+
+describe("jobs in code and the job generator", () => {
+  const postJson = (path: string, body: unknown) => mockFetch(path, { method: "POST", headers: { "X-Orb-Portal": "1", "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
+  it("lists the app's jobs with markers, one ejected", async () => {
+    const res = await mockFetch("/_portal/api/jobs");
+    expect(res.status).toBe(200);
+    const { jobs } = (await res.json()) as JobSourceList;
+    expect(jobs).toHaveLength(6);
+    const byName = Object.fromEntries((jobs ?? []).map((j) => [j.name, j]));
+    expect(Object.keys(byName["audit.rollup"]).sort()).toEqual(["definition", "ejected", "form", "generated", "ident", "kind", "name", "package", "worker"]);
+    expect(byName["audit.rollup"]).toMatchObject({ generated: true, ejected: false, kind: "sql", form: { kind: "sql" } });
+    expect(byName["invites.expire"]).toMatchObject({ generated: true, kind: "http", form: { http_method: "POST" } });
+    expect(byName["sessions.prune"]).toMatchObject({ generated: true, ejected: true, kind: "custom" });
+    expect(byName["mail.send"]).toMatchObject({ generated: false, ejected: false, kind: "custom" });
+    expect(byName["mail.send"].form).toBeUndefined();
+  });
+
+  it("plans a job like orb gen job: four files, jobs.go with before, the marker in the definition", async () => {
+    const res = await postJson("/_portal/api/generators/job/plan", { input: { name: "PingHealth", kind: "http", method: "get", url: "http://127.0.0.1:8080/readyz", trigger: "interval", every: "5m" } });
+    expect(res.status).toBe(200);
+    const { plan, applied } = (await res.json()) as GeneratorResponse;
+    expect(applied).toBe(false);
+    expect(plan.generator).toBe("job");
+    expect(plan.changes.map((c) => [c.kind, c.path])).toEqual([
+      ["create", "internal/jobs/pinghealth/pinghealth.go"],
+      ["create", "internal/jobs/pinghealth/pinghealth_test.go"],
+      ["create", "internal/app/job_ping_health.go"],
+      ["modify", "internal/app/jobs.go"],
+    ]);
+    expect(plan.changes[3].before).toContain("//orb:anchor jobs");
+    expect(plan.changes[3].content).toContain("definePingHealthJob(defs, deps)");
+    expect(plan.changes[3].before).not.toContain("definePingHealthJob");
+    expect(plan.changes[2].content).toMatch(/\/\/orb:job \{"kind":"http","http_method":"GET","http_url":"http:\/\/127\.0\.0\.1:8080\/readyz","worker":"sha256:[0-9a-f]{64}"\}/);
+    expect(plan.changes[0].content).toContain('Method = "GET"');
+    expect((plan.result as { definition: string }).definition).toBe("ping_health");
+  });
+
+  it("answers usage errors as the CLI prints them", async () => {
+    const cases: [Record<string, unknown>, string][] = [
+      [{}, "missing job name"],
+      [{ name: "X", kind: "http", url: "nope" }, "--url must be an http or https URL"],
+      [{ name: "X", kind: "sql", url: "http://x" }, "--url is for another kind of job, not sql"],
+      [{ name: "X", kind: "email", to: "x" }, "--to must be an email address"],
+      [{ name: "X", kind: "rocket" }, "--kind must be one of custom, http, sql, email, dispatch"],
+      [{ name: "X", trigger: "sometimes" }, 'unknown trigger "sometimes"'],
+      [{ name: "X", bogus: 1 }, "unknown field"],
+    ];
+    for (const [input, detail] of cases) {
+      const res = await postJson("/_portal/api/generators/job/plan", { input });
+      expect(res.status, detail).toBe(422);
+      const p = (await res.json()) as Problem;
+      expect(p.code).toBe("generator_failed");
+      expect(p.detail, detail).toContain(detail);
+    }
+    const exists = await postJson("/_portal/api/generators/job/plan", { input: { name: "retention" } });
+    expect(exists.status).toBe(409);
+    expect(((await exists.json()) as Problem).code).toBe("plan_conflict");
+  });
+
+  it("refuses to apply on the dirty tree, then registers the job after a restart", async () => {
+    const input = { name: "SelectOne", kind: "sql", sql: "SELECT 1", trigger: "manual" };
+    let res = await postJson("/_portal/api/generators/job/apply", { input });
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as Problem).detail).toMatch(/allow-dirty/);
+    res = await postJson("/_portal/api/generators/job/apply", { input, allow_dirty: true });
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as GeneratorResponse).applied).toBe(true);
+    // Not registered until the app restarts, like the real one.
+    let defs = ((await (await mockFetch("/_portal/app/ops/jobs/definitions")).json()) as JobDefinitionList).definitions ?? [];
+    expect(defs.some((d) => d.name === "select_one")).toBe(false);
+    // Planning it again is a conflict now: the files exist.
+    expect((await postJson("/_portal/api/generators/job/plan", { input })).status).toBe(409);
+    expect((await post("/_portal/api/app/restart")).status).toBe(202);
+    await new Promise((r) => setTimeout(r, 2400));
+    defs = ((await (await mockFetch("/_portal/app/ops/jobs/definitions")).json()) as JobDefinitionList).definitions ?? [];
+    expect(defs.find((d) => d.name === "select_one")).toMatchObject({ config: { enabled: true, schedule: "", timeout: "1m0s", max_attempts: 5, queue: "default" } });
+    const { jobs } = (await (await mockFetch("/_portal/api/jobs")).json()) as JobSourceList;
+    expect(jobs?.find((j) => j.name === "select_one")).toMatchObject({ generated: true, ejected: false, kind: "sql", worker: "internal/jobs/selectone/selectone.go", form: { kind: "sql", sql: "SELECT 1" } });
   }, 10_000);
 });

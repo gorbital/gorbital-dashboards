@@ -31,6 +31,10 @@ export function Logs() {
   const [text, setText] = useState("");
   const [requestId, setRequestId] = useState<string | null>(null);
   const onParam = useCallback((v: string | null) => setRequestId(v), []);
+  // `?q=` pre-fills the text filter (the Jobs page links a run's logs with `job_id=<id>`).
+  const onQuery = useCallback((v: string | null) => {
+    if (v) setText(v);
+  }, []);
 
   const all = useMemo(() => mergeTail(tail.items, list.data?.logs ?? [], logKey, 1000), [tail.items, list.data]);
   const shown = useMemo(() => {
@@ -49,6 +53,7 @@ export function Logs() {
     <>
       <Suspense fallback={null}>
         <QueryParam name="request_id" onValue={onParam} />
+        <QueryParam name="q" onValue={onQuery} />
       </Suspense>
       <PageHeader product="devtools" title="Logs" description={list.data ? `the last ${fmtInt(list.data.max)} records at info and above · /_dev/logs` : "what the app logs, as it logs it"}>
         <label className="flex items-center gap-2 text-[12px] text-muted">

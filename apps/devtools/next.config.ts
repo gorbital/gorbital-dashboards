@@ -1,13 +1,19 @@
 import type { NextConfig } from "next";
+import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
 
-const nextConfig: NextConfig = {
-  // Mock-data build: static export, served from `out/`.
-  output: "export",
-  trailingSlash: false,
-  images: { unoptimized: true },
-  transpilePackages: ["@gorbital/dash"],
-  agentRules: false,
-  devIndicators: false,
-};
+/** Where `orb dev` serves the portal; the dev server proxies `/_portal/*` there. */
+const portalUrl = (process.env.ORB_PORTAL_URL ?? "http://127.0.0.1:3100").replace(/\/$/, "");
 
-export default nextConfig;
+export default function nextConfig(phase: string): NextConfig {
+  const dev = phase === PHASE_DEVELOPMENT_SERVER;
+  return {
+    // Static export, served by orb dev from `out/`. Rewrites can't be exported, so
+    // the proxy to orb dev exists only while `next dev` runs.
+    ...(dev ? { rewrites: async () => [{ source: "/_portal/:path*", destination: `${portalUrl}/_portal/:path*` }] } : { output: "export" }),
+    trailingSlash: false,
+    images: { unoptimized: true },
+    transpilePackages: ["@gorbital/dash"],
+    agentRules: false,
+    devIndicators: false,
+  };
+}

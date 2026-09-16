@@ -3,13 +3,15 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3100",
+    "dev": "next dev -p 3101",
     "build": "next build",
-    "start": "npx serve out -l 3100",
-    "typecheck": "tsc --noEmit"
+    "start": "npx serve out -l 3101",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@gorbital/dash": "workspace:*",
+    "@tanstack/react-query": "^5.103.1",
     "lucide-react": "^1.46.0",
     "next": "^16.3.5",
     "react": "^19.3.0",
@@ -22,6 +24,7 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "tailwindcss": "^4.3.3",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^5.0.1"
   }
 }

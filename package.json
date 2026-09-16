@@ -9,6 +9,7 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
     "devtools": "pnpm --filter devtools",
     "observe": "pnpm --filter observe",
     "deploy": "pnpm --filter deploy"

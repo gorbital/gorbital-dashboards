@@ -1,4 +1,5 @@
 import { rng, NOW, MIN, HOUR } from "@gorbital/dash/lib/rand";
+import type { DevApp, DevConfigList, DevJobRunList, DevLogList, DevMail, DevMigrations, DevRequestList, DevRouteList, OutputLine, Status } from "./api/types";
 
 export { NOW };
 const r = rng(1234);
@@ -184,3 +185,218 @@ export const slowQueries = [
 ];
 
 export const seedR = r;
+
+/* ---------- What orb dev's portal would answer, for mock mode ---------- */
+
+const iso = (ts: number) => new Date(ts).toISOString();
+
+/** GET /_portal/api/status as the mock transport first answers it; the mock supervisor mutates `app`. */
+export const portalStatus: Status = {
+  portal: { version: "1.3.0", ui: "bundled", started_at: iso(NOW - 3 * HOUR - 2 * MIN) },
+  project: {
+    name: "acme-api",
+    module: "github.com/acme/acme-api",
+    preset: "full",
+    tenancy: "multi",
+    features: ["auth", "orgs", "jobs", "mail", "settings", "audit", "releases"],
+    mail: "mailpit",
+    dir: "/Users/you/src/acme-api",
+    database: true,
+  },
+  app: {
+    state: "running",
+    pid: 48213,
+    addr: "127.0.0.1:8080",
+    url: "http://127.0.0.1:8080",
+    started_at: iso(NOW - 20 * MIN),
+    restarts: 3,
+    console: true,
+  },
+  links: {
+    api: "http://127.0.0.1:8080",
+    docs: "http://127.0.0.1:8080/docs",
+    mail: "http://127.0.0.1:8025",
+    console: "http://127.0.0.1:8080/_dev/",
+    grafana: "http://127.0.0.1:3000",
+  },
+  generators: ["job", "migration", "resource"],
+};
+
+/** The output tail, oldest first: orb's own messages and the app's log lines. */
+export const outputLines: OutputLine[] = (
+  [
+    [-20 * MIN - 8000, "orb", "change detected: internal/projects/service.go"],
+    [-20 * MIN - 7900, "orb", "building… go build ./cmd/api"],
+    [-20 * MIN - 2100, "orb", "built in 5.8s"],
+    [-20 * MIN - 2000, "orb", "starting app (pid 48213) on 127.0.0.1:8080"],
+    [-20 * MIN - 1800, "app", 'level=INFO msg="config loaded" env=development'],
+    [-20 * MIN - 1780, "app", 'level=INFO msg="postgres connected" pool=10 db=acme_api_dev'],
+    [-20 * MIN - 1600, "app", 'level=INFO msg="migrations up to date" current=12 pending=1'],
+    [-20 * MIN - 1500, "app", 'level=INFO msg="river started" queues=3 workers=6'],
+    [-20 * MIN - 1400, "app", 'level=INFO msg="dev console on" endpoints=11'],
+    [-20 * MIN - 1200, "app", 'level=INFO msg="listening" addr=127.0.0.1:8080'],
+    [-20 * MIN - 1100, "orb", "ready · http://127.0.0.1:8080 · docs at /docs"],
+    [-19 * MIN, "app", 'level=INFO msg="http request" method=GET route="/readyz" status=200 duration=3.8ms'],
+    [-17 * MIN, "app", 'level=INFO msg="http request" method=POST route="/v1/auth/sign-in" status=200 duration=131ms request_id=req_2e9b1f'],
+    [-17 * MIN + 400, "app", 'level=INFO msg="job enqueued" kind=mail.send queue=mail'],
+    [-17 * MIN + 900, "app", 'level=INFO msg="job succeeded" kind=mail.send attempt=1 duration=402ms'],
+    [-15 * MIN, "app", 'level=INFO msg="http request" method=GET route="/v1/orgs/{org}/projects" status=200 duration=38ms request_id=req_71c0aa'],
+    [-12 * MIN, "app", 'level=WARN msg="slow query" duration=241ms route="GET /ops/audit/stats" hint="no index on audit_events(at)"'],
+    [-11 * MIN, "app", 'level=INFO msg="http request" method=GET route="/ops/audit/stats" status=200 duration=312ms request_id=req_c04d11'],
+    [-7 * MIN, "app", 'level=INFO msg="job succeeded" kind=sessions.prune pruned=3'],
+    [-4 * MIN, "app", 'level=INFO msg="job succeeded" kind=audit.rollup events=1204 buckets=16'],
+    [-2 * MIN, "app", 'level=INFO msg="http request" method=POST route="/v1/orgs/{org}/invites" status=201 duration=64ms request_id=req_9a12f0'],
+    [-2 * MIN + 500, "app", 'level=INFO msg="mail sent" template=invite to=ada@acme.dev'],
+  ] as const
+).map(([offset, stream, text]) => ({ time: iso(NOW + offset), stream, text }));
+
+/** Lines the mock stream emits, one every few seconds, in a loop. */
+export const liveOutputLines: { stream: "app" | "orb"; text: string }[] = [
+  { stream: "app", text: 'level=INFO msg="http request" method=GET route="/readyz" status=200 duration=2.9ms' },
+  { stream: "app", text: 'level=INFO msg="http request" method=GET route="/v1/me" status=200 duration=4.1ms request_id=req_b7e21c' },
+  { stream: "app", text: 'level=INFO msg="job succeeded" kind=audit.rollup events=88 buckets=4' },
+  { stream: "app", text: 'level=INFO msg="http request" method=GET route="/v1/orgs" status=200 duration=11ms request_id=req_44a0d9' },
+  { stream: "app", text: 'level=WARN msg="rate limited" route="POST /v1/auth/sign-in" ip=127.0.0.1' },
+  { stream: "orb", text: "watching 214 files in 31 packages" },
+];
+
+/** GET /_dev/app: what the app says about itself. */
+export const devApp: DevApp = {
+  name: "acme-api",
+  version: "0.4.2",
+  commit: "3f9a1c7",
+  go_version: "go1.25.1",
+  env: "development",
+  libraries: [
+    { path: "gorbital.dev/modules/auth", version: "v1.3.0" },
+    { path: "gorbital.dev/modules/orgs", version: "v1.3.0" },
+    { path: "gorbital.dev/modules/jobs", version: "v1.3.0" },
+    { path: "gorbital.dev/modules/mail", version: "v1.3.0" },
+    { path: "gorbital.dev/modules/settings", version: "v1.3.0" },
+    { path: "gorbital.dev/modules/devconsole", version: "v1.3.0", replaced: true },
+  ],
+  modules: Object.keys(moduleCounts),
+  jobs: jobDefs.map((d) => ({
+    name: d.name,
+    description: `${d.queue} queue · ${d.attempts} attempts`,
+    enabled: true,
+    schedule: d.schedule === "on demand" ? "" : d.schedule,
+    modified: d.name === "auth.lockout_after",
+    next_run_at: d.schedule === "on demand" ? undefined : iso(NOW + 6 * MIN),
+  })),
+  settings: settings.map((s) => ({
+    key: s.key,
+    group: s.key.split(".")[0],
+    description: `${s.type}${s.bounds ? ` · ${s.bounds}` : ""}`,
+    kind: s.type,
+    value: s.type === "int" ? Number(s.value) : s.type === "bool" ? s.value === "true" : s.value,
+    default: s.type === "int" ? Number(s.def) : s.type === "bool" ? s.def === "true" : s.def,
+    modified: s.value !== s.def,
+    org_overridable: s.key.startsWith("orgs.") || s.key.startsWith("projects."),
+  })),
+  flags: [
+    { key: "projects.search", group: "projects", description: "Full-text search over projects", client: true, enabled: false, default: false, percentage: null, targets: 0, modified: false },
+    { key: "orgs.sso", group: "orgs", description: "SAML sign-in for organisations", client: false, enabled: true, default: false, percentage: 25, targets: 2, modified: true },
+    { key: "mail.digest", group: "mail", description: "Weekly organisation digest", client: false, enabled: true, default: true, percentage: null, targets: 0, modified: false },
+  ],
+  permissions: [
+    {
+      name: "org",
+      permissions: [
+        { name: "org.read", description: "See the organisation" },
+        { name: "org.members.invite", description: "Invite members" },
+        { name: "projects.write", description: "Create and edit projects" },
+        { name: "projects.delete", description: "Delete projects" },
+      ],
+      roles: [
+        { name: "viewer", description: "Read only", permissions: ["org.read"] },
+        { name: "editor", description: "Edit projects", permissions: ["org.read", "projects.write"] },
+        { name: "admin", description: "Everything", permissions: ["org.read", "org.members.invite", "projects.write", "projects.delete"] },
+      ],
+    },
+  ],
+};
+
+/** GET /_dev/routes, from the same routes the Routes page shows, plus the plain handlers outside OpenAPI. */
+export const devRoutes: DevRouteList = {
+  routes: [
+    ...routes.map((x) => ({ method: x.method, path: x.path, operation_id: x.op, summary: x.handler, tags: [x.module], secured: x.mw.includes("session"), source: "openapi" as const })),
+    { method: "GET", path: "/docs", tags: [], secured: false, source: "handler" as const },
+    { method: "GET", path: "/openapi.json", tags: [], secured: false, source: "handler" as const },
+    { method: "GET", path: "/.well-known/security.txt", tags: [], secured: false, source: "handler" as const },
+  ],
+};
+
+export const devConfig: DevConfigList = {
+  variables: [
+    { name: "APP_ENV", secret: false, set: true, value: "development" },
+    { name: "APP_ADDR", secret: false, set: true, value: "127.0.0.1:8080" },
+    { name: "APP_LOG_LEVEL", secret: false, set: true, value: "debug" },
+    { name: "DATABASE_URL", secret: true, set: true },
+    { name: "DEV_CONSOLE_TOKEN", secret: true, set: true },
+    { name: "MAIL_DELIVERY", secret: false, set: true, value: "mailpit" },
+    { name: "MAILPIT_WEB_PORT", secret: false, set: true, value: "8025" },
+    { name: "OTEL_EXPORTER_OTLP_ENDPOINT", secret: false, set: false },
+    { name: "GITHUB_CLIENT_SECRET", secret: true, set: false },
+  ],
+};
+
+export const devMigrations: DevMigrations = { current: 12, latest: 13, pending: 1 };
+
+export const devRequests: DevRequestList = {
+  max: 500,
+  requests: [
+    { time: iso(NOW - 2 * MIN), method: "POST", route: "/v1/orgs/{org}/invites", path: "/v1/orgs/acme/invites", status: 201, duration_ms: 64.2, request_id: "req_9a12f0", trace_id: r.hex(32) },
+    { time: iso(NOW - 11 * MIN), method: "GET", route: "/ops/audit/stats", path: "/ops/audit/stats", status: 200, duration_ms: 312.4, request_id: "req_c04d11", trace_id: r.hex(32) },
+    { time: iso(NOW - 15 * MIN), method: "GET", route: "/v1/orgs/{org}/projects", path: "/v1/orgs/acme/projects", status: 200, duration_ms: 38.1, request_id: "req_71c0aa", trace_id: r.hex(32) },
+    { time: iso(NOW - 17 * MIN), method: "POST", route: "/v1/auth/sign-in", path: "/v1/auth/sign-in", status: 200, duration_ms: 131.0, request_id: "req_2e9b1f", trace_id: r.hex(32) },
+    { time: iso(NOW - 19 * MIN), method: "GET", route: "/readyz", path: "/readyz", status: 200, duration_ms: 3.8 },
+    { time: iso(NOW - 21 * MIN), method: "GET", route: "", path: "/favicon.ico", status: 404, duration_ms: 0.3 },
+  ],
+};
+
+export const devLogs: DevLogList = {
+  max: 1000,
+  logs: outputLines
+    .filter((l) => l.stream === "app")
+    .reverse()
+    .map((l) => {
+      const level = /level=(\w+)/.exec(l.text)?.[1] ?? "INFO";
+      const message = /msg="([^"]+)"/.exec(l.text)?.[1] ?? l.text;
+      const attrs = [...l.text.matchAll(/(\w+)=("[^"]*"|\S+)/g)].filter((m) => m[1] !== "level" && m[1] !== "msg").map((m) => ({ key: m[1], value: m[2].replace(/^"|"$/g, "") }));
+      return { time: l.time, level, message, attrs };
+    }),
+};
+
+export const devJobRuns: DevJobRunList = {
+  runs: jobRuns.map((j, i) => ({
+    id: 3114 - i,
+    kind: j.job,
+    queue: jobDefs.find((d) => d.name === j.job)?.queue ?? "default",
+    state: j.state === "failed" ? "discarded" : "completed",
+    attempt: j.state === "failed" ? 3 : 1,
+    max_attempts: j.state === "failed" ? 3 : jobDefs.find((d) => d.name === j.job)?.attempts ?? 3,
+    created_at: iso(j.at - j.ms - 200),
+    scheduled_at: iso(j.at - j.ms - 200),
+    attempted_at: iso(j.at - j.ms),
+    finalized_at: iso(j.at),
+    errors: j.state === "failed" ? ["context deadline exceeded", "context deadline exceeded", j.out] : [],
+    request_id: j.job === "mail.send" ? "req_2e9b1f" : undefined,
+  })),
+};
+
+export const devMail: DevMail = {
+  web_url: "http://127.0.0.1:8025",
+  total: outbox.length,
+  messages: outbox.map((m) => ({
+    id: m.id,
+    from: { name: "acme-api (dev)", address: "no-reply@acme.dev" },
+    to: [{ name: "", address: m.to }],
+    subject: m.subject,
+    snippet: `${m.template} · ${m.subject.slice(0, 40)}`,
+    created: iso(m.at),
+    size: Math.round(parseFloat(m.size) * 1024),
+    attachments: 0,
+    read: m.id !== "msg_01",
+  })),
+};

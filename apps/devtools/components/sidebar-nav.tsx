@@ -1,6 +1,6 @@
 "use client";
 
-import { Boxes, Database, LayoutDashboard, ListOrdered, Mail, Route, ScrollText, ShieldCheck, SlidersHorizontal, Table2, TerminalSquare, Zap } from "lucide-react";
+import { Boxes, Database, GitBranch, LayoutDashboard, ListOrdered, Mail, Route, ScrollText, ShieldCheck, SlidersHorizontal, Table2, TerminalSquare, Waypoints, Zap } from "lucide-react";
 import { Nav, type NavSection } from "@gorbital/dash/components/nav";
 import { Tooltip } from "@gorbital/dash/components/tooltip";
 import { useCapabilities, useDevMail, useDevMigrations, useDevRoutes } from "@/lib/api/queries";
@@ -44,6 +44,9 @@ export function SidebarNav() {
       items: [
         { label: "Table Editor", href: "/database/tables", icon: Table2 },
         { label: "SQL Editor", href: "/database/sql", icon: TerminalSquare },
+        { label: "Schema", href: "/database/schema", icon: Waypoints },
+        { label: "Objects", href: "/database/objects", icon: Boxes },
+        { label: "Migrations", href: "/database/migrations", icon: GitBranch },
       ],
     });
   }
@@ -57,21 +60,24 @@ export function SidebarNav() {
 
 /** The Database section when the app has no database: the same look, greyed, with the reason on hover. */
 function NoDatabaseSection() {
+  const items = [
+    { label: "Table Editor", icon: Table2 },
+    { label: "SQL Editor", icon: TerminalSquare },
+    { label: "Schema", icon: Waypoints },
+    { label: "Objects", icon: Boxes },
+    { label: "Migrations", icon: GitBranch },
+  ];
   return (
     <div className="flex flex-col gap-0.5">
       <div className="px-3 pt-4 pb-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-dim">Database</div>
-      <Tooltip content="This app has no database" side="right">
-        <span className="flex cursor-not-allowed items-center gap-2.5 rounded-lg px-3 py-[7px] font-medium text-faint" aria-disabled="true">
-          <Table2 size={15} strokeWidth={1.75} />
-          <span>Table Editor</span>
-        </span>
-      </Tooltip>
-      <Tooltip content="This app has no database" side="right">
-        <span className="flex cursor-not-allowed items-center gap-2.5 rounded-lg px-3 py-[7px] font-medium text-faint" aria-disabled="true">
-          <TerminalSquare size={15} strokeWidth={1.75} />
-          <span>SQL Editor</span>
-        </span>
-      </Tooltip>
+      {items.map(({ label, icon: Icon }) => (
+        <Tooltip key={label} content="This app has no database" side="right">
+          <span className="flex cursor-not-allowed items-center gap-2.5 rounded-lg px-3 py-[7px] font-medium text-faint" aria-disabled="true">
+            <Icon size={15} strokeWidth={1.75} />
+            <span>{label}</span>
+          </span>
+        </Tooltip>
+      ))}
     </div>
   );
 }

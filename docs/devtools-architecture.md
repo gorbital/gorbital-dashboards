@@ -24,6 +24,9 @@ apps/devtools
 │   ├── shared/             Gate, ProblemPanel, ReasonDialog, QueryParam, KeyValueEditor (below)
 │   ├── table-editor/       the Table Editor (Phase 2, below)
 │   ├── sql-editor/         SqlEditor, SnippetTree, Toolbar, Results, ExplainView, the dialogs
+│   ├── schema/             the diagram (Phase 4)
+│   ├── db-objects/         the Objects tabs and the plan dialog (Phase 4)
+│   ├── migrations/         the Migrations page (Phase 4)
 │   ├── app-chip.tsx        the shell's app chip, live
 │   ├── portal-version.tsx  the shell's version, live
 │   ├── search.tsx          the ⌘K palette: pages, the app's live routes, app actions
@@ -423,6 +426,94 @@ like `SELEC`); a write in read-only mode fails as PostgreSQL would.
 `check` is a port of `pgmeta.Check`. `explain` returns a Limit → Sort →
 Seq Scan plan, with actual figures when analyzed. `migration` previews the
 file and refuses to apply without `allow_dirty`.
+
+## Phase 4: Schema, Objects and Migrations
+
+Three pages under `/database/` read the catalog and change it through
+migrations. Everything new lives in new files; the shared code gained one
+dispatch line in `lib/api/mock/index.ts`, a "Database" nav section, and
+`portal.database` on `PortalInfo`.
+
+```
+lib/api/schema.ts                types (pgmeta catalog, Change, DdlPlan, Migration) and hooks
+lib/api/mock/schema.ts           the mock's catalog, DDL planner and migrate commands
+components/schema/               graph.ts (ids, buildGraph, layoutGraph, toMermaid), positions.ts,
+                                 export.ts (PNG/SVG/clipboard), table-node.tsx, flow.css, schema-page.tsx
+components/db-objects/           objects-page.tsx, one *-tab.tsx per kind, plan-dialog.tsx,
+                                 changes.ts (Change builders and templates), table-picker.tsx, common.tsx
+components/migrations/           migrations-page.tsx, migrations.ts (ordering, summary, badges), new-migration-dialog.tsx
+app/database/{schema,objects,migrations}/page.tsx
+```
+
+| Endpoint | Hook |
+|---|---|
+| `GET db/schemas`, `db/tables?schema=`, `db/tables/{schema}/{table}`, `db/foreign-keys`, `db/enums`, `db/functions`, `db/views`, `db/extensions` | `useSchemas`, `useTables`, `useTableDetail`, `useTableDetails` (one query per drawn table), `useForeignKeys`, `useEnums`, `useFunctions`, `useViews`, `useExtensions`; keys under `["db", …]` |
+| `GET db/migrations`, `GET /_portal/app/_dev/migrations` | `useMigrations` (oldest first, as sent), `useDevMigrations` (the app's own count, while it runs) |
+| `POST db/ddl/plan`, `db/ddl/apply` | `useDdlPlan`, `useDdlApply` |
+| `POST app/migrate`, `app/migrate-down`, `app/migrate-redo` | `useMigrateAction(action)` |
+| `POST generators/migration/plan`, `apply` | `useMigrationGenerator(apply)` |
+
+Every page starts with `DbGate`: the connection problem, or "no database"
+when `portal.database` is false, or the page. The pages hydrate inside a
+Suspense boundary (they read the search params), which React may hydrate
+after the status query has answered, so `useMounted` keeps the prerender
+and the first client render identical (`DbPageSkeleton`) and the real
+page follows on mount.
+
+### The diagram (`@xyflow/react`, `@dagrejs/dagre`, `html-to-image`)
+
+`buildGraph` turns the tables, their details and the foreign keys into
+nodes (one per table, sized from the column count so dagre can lay them out
+before the DOM exists) and edges (one per foreign-key column pair, from the
+referencing column's right handle to the referenced column's left handle;
+ids `schema.table`, `column:in|out`, `fk:schema.table.name`). `layoutGraph`
+runs dagre left to right on the tables that foreign keys join and puts the
+rest in a grid beside them. `neighbourhood` is what lights up on hover.
+
+Managed and system tables are hidden by default (a Full app has ~30 of
+them); the two toggles persist in `localStorage.devtools.schema.show`.
+Dragged positions persist per set of schemas
+(`devtools.schema.positions:<schemas>`, `positions.ts`, every access in
+try/catch); Auto layout clears them. ⌘F focuses the find box: matches stay
+lit while the rest fade, Enter centres the first match at zoom 1. Export
+renders the viewport with `html-to-image` at 1:1 (PNG at 2× when the
+diagram is small enough) or copies the `erDiagram` from `toMermaid`
+(downloaded as `.mmd` when the clipboard isn't available, as on a
+non-secure origin). React Flow's stylesheet is imported once in
+`schema-page.tsx`; `flow.css` overrides its `--xy-*-default` variables with
+theme tokens under `.schema-flow` and styles the node, the handles and the
+hot/cold edge states.
+
+### The plan dialog
+
+Every create and drop on the Objects page builds a `Change` with
+`components/db-objects/changes.ts` and hands it to `PlanDialog`, which
+posts it to `db/ddl/plan`, shows the summary, the Up and Down SQL, the
+notes, the irreversible and no-transaction flags and the file path, and
+lets the developer rename the migration and allow a dirty working tree.
+Apply posts the same change to `db/ddl/apply`; `useDdlApply` then polls
+`db/migrations` (`waitForMigrations`, every second for up to 12 s, until
+the applied state differs or the status reports a problem) and invalidates
+every `db` query, so the tab refetches. Drops pass the catalog's
+definition (`definition`, and `signature` for functions) so the Down
+recreates the object; the backend marks a drop without it irreversible.
+403 `system_table`, 409 `plan_conflict` and 422 `invalid_input` show the
+backend's detail in the dialog.
+
+The Migrations page's three actions answer 202; `useMigrateAction` polls
+the same way and shows `app.problem` (the supervisor's report of a failed
+migrate) in a panel with a link to the output console. New migration goes
+through the `migration` generator's plan and apply.
+
+### Mock
+
+`lib/api/mock/schema.ts` holds a small catalog (nine relations across
+`public` and `billing` with foreign keys, two enums, four functions, three
+triggers, indexes, two views, nine extensions) and twelve migration files,
+one pending. `planChange` mirrors `pgmeta.Plan` for the object kinds and
+`renderPlan` the file; apply refuses a dirty tree without `allow_dirty`,
+writes the migration as pending, and the migrate commands take 1.5 s to
+apply, roll back or redo, changing the catalog as they go.
 
 ## What Phase 0 leaves for later
 

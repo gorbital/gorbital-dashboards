@@ -51,7 +51,7 @@ export type PortalInfo = {
   version: string;
   ui: "bundled" | "placeholder";
   started_at: string;
-  /** The portal can reach the app's database (the Table Editor, the SQL Editor and the Schema pages). */
+  /** The portal can reach the app's database (the Table Editor, the SQL Editor, Schema, Objects and Migrations). */
   database: boolean;
 };
 

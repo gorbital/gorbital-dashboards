@@ -121,7 +121,11 @@ editor with reasons and version conflicts, reset and history), Database
 (migrations with a working Apply, the pool, the health checks and the
 instance's runtime)), SQL Editor (scripts in one transaction rolled back by
 default, a result per statement, EXPLAIN as a tree, snippets in `db/queries`,
-history, templates, save as migration; Monaco bundled with the app, no CDN).
+history, templates, save as migration; Monaco bundled with the app, no CDN), Schema (the tables and their foreign keys as a diagram: drag to
+arrange, find, export as PNG, SVG or Mermaid), Objects (functions, triggers,
+enums, extensions, indexes and views, each created and dropped as a migration
+shown before it is written), Migrations (every file with its SQL and state;
+apply pending, roll back, redo, new file).
 
 **Observability Portal** · Overview, Requests (latency heatmap), Traces and a trace
 waterfall, Errors grouped by cause, Jobs and queues, Mail, Logs, Instances,

@@ -13,6 +13,7 @@ import { Segmented } from "@gorbital/dash/components/pill";
 import { SkeletonLines } from "@gorbital/dash/components/spinner";
 import { Table } from "@gorbital/dash/components/table";
 import { fmtBytes, fmtMs } from "@gorbital/dash/lib/format";
+import { readBearerToken } from "@/lib/api/bearer-token";
 import { useCapabilities, useDevRoutes } from "@/lib/api/queries";
 import { methodsWithBody, pathParams, proxyAddsAuth, sendRequest, type AuthMode, type KeyValue, type RequestSpec, type SentRequest } from "@/lib/api/request-builder";
 import type { DevRoute } from "@/lib/api/types";
@@ -191,6 +192,15 @@ function RequestBuilder({ route }: { route: DevRoute }) {
   const [body, setBody] = useState("");
   const [auth, setAuth] = useState<AuthMode>("operator");
   const [token, setToken] = useState("");
+  const [tokenFrom, setTokenFrom] = useState<string | undefined>();
+  // "Act as user" on the Authentication screen leaves a token for this tab; start from it.
+  useEffect(() => {
+    const stored = readBearerToken();
+    if (!stored) return;
+    setAuth("bearer");
+    setToken(stored.token);
+    setTokenFrom(stored.label);
+  }, []);
   const [sending, setSending] = useState(false);
   const [current, setCurrent] = useState<SentRequest | undefined>();
   const [history, setHistory] = useState<SentRequest[]>([]);
@@ -259,7 +269,12 @@ function RequestBuilder({ route }: { route: DevRoute }) {
               <option value="none">None</option>
             </Select>
           </Field>
-          {auth === "bearer" && <Input mono value={token} onChange={(e) => setToken(e.target.value)} placeholder="token" aria-label="bearer token" autoComplete="off" />}
+          {auth === "bearer" && (
+            <div className="grid gap-1">
+              <Input mono value={token} onChange={(e) => { setToken(e.target.value); setTokenFrom(undefined); }} placeholder="token" aria-label="bearer token" autoComplete="off" />
+              {tokenFrom && token && <span className="font-mono text-[10.5px] text-dim">acting as {tokenFrom} · from the Authentication screen</span>}
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <Button kind="primary" size="sm" icon={<Play size={11} />} onClick={() => void send()} loading={sending} disabled={missing.length > 0}>
               Send

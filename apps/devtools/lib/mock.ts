@@ -324,6 +324,20 @@ export const devApp: DevApp = {
   ],
   permissions: [
     {
+      name: "platform",
+      permissions: [
+        { name: "ops.read", description: "Read the ops API" },
+        { name: "ops.write", description: "Change settings, jobs and flags" },
+        { name: "ops.auth.read", description: "See accounts" },
+        { name: "ops.auth.write", description: "Change accounts" },
+      ],
+      roles: [
+        { name: "user", description: "Every account", permissions: [] },
+        { name: "platform_admin", description: "Every ops permission", permissions: ["ops.read", "ops.write", "ops.auth.read", "ops.auth.write"] },
+        { name: "ops_viewer", description: "Read the ops API", permissions: ["ops.read", "ops.auth.read"] },
+      ],
+    },
+    {
       name: "org",
       permissions: [
         { name: "org.read", description: "See the organisation" },

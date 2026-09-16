@@ -1,6 +1,6 @@
 "use client";
 
-import { Boxes, Database, LayoutDashboard, ListOrdered, Mail, Play, RotateCw, Route, ScrollText, ShieldCheck, SlidersHorizontal, Square, Zap } from "lucide-react";
+import { Boxes, Database, KeyRound, LayoutDashboard, ListOrdered, Mail, Play, RotateCw, Route, ScrollText, ShieldCheck, SlidersHorizontal, Square, Zap } from "lucide-react";
 import { CommandPalette, type CommandItem } from "@gorbital/dash/components/command";
 import { useAppAction, useCapabilities, useDevRoutes } from "@/lib/api/queries";
 
@@ -14,6 +14,7 @@ const pages: CommandItem[] = [
   { id: "page:jobs", label: "Jobs", hint: "/jobs", href: "/jobs", icon: <Zap size={13} />, group: "Pages" },
   { id: "page:mail", label: "Mail", hint: "/mail", href: "/mail", icon: <Mail size={13} />, group: "Pages" },
   { id: "page:settings", label: "Settings", hint: "/settings", href: "/settings", icon: <SlidersHorizontal size={13} />, group: "Pages" },
+  { id: "page:auth", label: "Authentication", hint: "/auth", href: "/auth", icon: <KeyRound size={13} />, group: "Pages", keywords: ["users", "accounts", "sessions", "providers", "rate limits"] },
   { id: "page:database", label: "Database", hint: "/database", href: "/database", icon: <Database size={13} />, group: "Pages" },
 ];
 

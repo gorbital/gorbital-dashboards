@@ -47,7 +47,7 @@ localStorage.devtoolsData = "mock"   // or "live"; then reload
 
 Every Dev Portal page is live: the Overview, Routes, Requests, Logs,
 Modules, Mail and Database read the dev console (`/_portal/app/_dev/*`),
-and Audit, Jobs, Settings, Mail and Database read the app's ops API
+and Audit, Jobs, Settings, Mail, Authentication and Database read the app's ops API
 (`/_portal/app/ops/*`), where `orb dev` sends its console token and the app
 treats it as a development operator with every `/ops` permission. Mock mode
 answers all of those endpoints too, with the same versions, reasons and rate
@@ -117,7 +117,11 @@ cursor pagination), Jobs (definitions with Run now, enable, disable, edit and
 reset; runs with retry and cancel; queues with pause and resume; the
 scheduled list), Mail (the Mailpit inbox, the delivery configuration, a test
 email and the suppression list), Settings (runtime settings grouped, a typed
-editor with reasons and version conflicts, reset and history), Database
+editor with reasons and version conflicts, reset and history), Authentication
+(accounts with search and paging; an account's sessions, passkeys, linked
+providers, second factors and pending codes; create, verify, ban, delete,
+roles, end sessions, enroll or reset MFA, act as a user in the Routes
+builder; sign-in providers; rate limiters with reset), Database
 (migrations with a working Apply, the pool, the health checks and the
 instance's runtime)), SQL Editor (scripts in one transaction rolled back by
 default, a result per statement, EXPLAIN as a tree, snippets in `db/queries`,

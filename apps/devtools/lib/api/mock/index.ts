@@ -53,6 +53,7 @@ import type {
   Suppression,
   SystemInfo,
 } from "../types";
+import { mockAuthFetch, resetMockAuth } from "./auth";
 import { mockDbFetch } from "./db";
 import { mockSqlFetch } from "./sql";
 import { mockDb } from "./schema";
@@ -167,6 +168,7 @@ export function resetMock() {
   nextChangeId = 10;
   lastRunAt.clear();
   testEmails = 0;
+  resetMockAuth();
 }
 
 /* ---------- Responses ---------- */
@@ -388,6 +390,10 @@ function opsProxy(path: string, query: URLSearchParams, method: string, init: Re
   if (!portalStatus.project.features.includes("ops")) return problemResponse(problem(404, "not_found", `no route matches ${method} ${path}`));
   const body = method === "GET" ? {} : parseBody(init);
   if (!body) return problemResponse(problem(422, "validation_failed", "the body must be JSON"));
+
+  // Accounts, sign-in methods and rate limiters (mock/auth.ts)
+  const auth = mockAuthFetch(path, query, method, body);
+  if (auth) return auth;
 
   // Settings
   if (path === "/ops/settings" && method === "GET") {

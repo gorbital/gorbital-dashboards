@@ -15,12 +15,13 @@ apps/devtools
 │   ├── layout.tsx          fonts, the Shell, the DevtoolsProvider around everything
 │   ├── page.tsx            Overview
 │   ├── database/sql/       SQL Editor, in a Suspense boundary for ?snippet=
-│   └── routes|requests|logs|modules|audit|jobs|mail|settings|database
+│   └── routes|requests|logs|modules|audit|jobs|mail|settings|database|auth
 ├── components/
 │   ├── overview/           Overview (with the health panel), OutputConsole, ConnectionProblem
 │   ├── routes/             the route list and the request builder
 │   ├── requests/, logs/    the two live-tailed pages; logs/log-line.tsx is the expandable record both use
 │   ├── modules/, audit/, jobs/, settings/, database/, mail/
+│   ├── auth/               the Authentication screen (Phase 5, below)
 │   ├── shared/             Gate, ProblemPanel, ReasonDialog, QueryParam, KeyValueEditor (below)
 │   ├── table-editor/       the Table Editor (Phase 2, below)
 │   ├── sql-editor/         SqlEditor, SnippetTree, Toolbar, Results, ExplainView, the dialogs
@@ -33,6 +34,7 @@ apps/devtools
 │   └── sidebar-nav.tsx     the nav; live badges for routes, captured mail and pending migrations
 └── lib/
     ├── mock.ts             sample data for every page and for mock mode
+    ├── auth.ts             the Authentication screen's pure logic: paging merge, grantable roles, code expiry, limiter key examples
     ├── time.ts             clock, when, ago and between, for tables
     ├── use-now.ts          a ticking clock for uptimes and "ago"
     ├── table-editor/       the Table Editor's pure logic: URL state, literals, CSV, plan builders
@@ -55,6 +57,8 @@ serves `out/` at `http://127.0.0.1:3100` and resolves `/routes` to
 | `live.ts` | `useLiveTail<T>({ path, event, enabled, max })`: follows a console stream and keeps the newest items; `mergeTail` folds the list endpoint's backlog in behind them without duplicates. |
 | `errors.ts` | `describeError(err, { scope, console })`: what an error means by where it came from (a 401 from `/ops` while the app serves the console is an orb or app that predates the dev operator; a 404 from `/_dev` is an app without the console; 503 `unavailable` from `/_dev/mail` is Mailpit down…). `errorMessage` for toasts, `needsReason` and `isVersionConflict` for the `*_reason_required` and `*_version_conflict` families. |
 | `request-builder.ts` | The Routes page's builder as pure functions: `pathParams`, `fillPath`, `buildQuery`, `buildRequest` (the URL through `/_portal/app` and the `RequestInit`, with the mutation header, a pasted bearer token, the JSON body) and `sendRequest`, which measures the answer and keeps the headers worth showing. |
+| `auth.ts` | The Authentication screen's data layer: the types of ADR-0070 (`OpsUser`, `OpsUserDetail` with `AuthSession`, `Passkey`, `Identity`, `OpsMFAStatus`, `OpsCode`, `OpsImpersonation`, `OpsTOTPEnrollment`, `SignInMethod`, `RateLimiter`, the request bodies) matching `internal/modules/auth/delivery/ops_users.go` and `internal/modules/ops/delivery/auth.go`, and one hook per endpoint (`useAuthUsers` pages by `next_cursor`; `useAuthUser`; the mutations toast and invalidate `["ops","auth",…]` and the audit log). |
+| `bearer-token.ts` | `storeBearerToken`, `readBearerToken`, `clearBearerToken`: the token "Act as user" hands to the Routes page's request builder, in `sessionStorage` (this tab only), never in the query string. |
 | `setting-value.ts` | Typed input for runtime settings: `formatSettingValue` and `parseSettingValue` per kind (`bool`, `int`, `float`, `string`, `enum`, `duration`, `string_list`) against the constraints (`min`, `max`, `one_of`, `max_len`, `max_items`, `format`), Go durations (`durationMs`, `shortDuration`), `describeConstraints` for the hint line. |
 | `store.ts` | The console store: the latest `AppStatus` from the stream, the output tail (capped at 2,000 lines like orb's own buffer), the dropped count and the connection state, read with `useConsole()` (`useSyncExternalStore`). `mergeLines` folds `/output` into what the stream delivered without duplicates and in time order. |
 | `queries.ts` | React Query hooks. Portal: `useStatus` (every 5 s), `useCapabilities` (what the status says the app can answer: `running`, `console`, `ops`, `database`), `useOutput`, `useReadiness`, `useAppAction`, `useMigrate`. Console: `useDevApp`, `useDevRoutes`, `useDevRequests`, `useDevLogs`, `useDevMigrations`, `useDevMail`. Ops: `useSettings`, `useSettingHistory`, `useSetSetting`, `useResetSetting`, `useJobDefinitions`, `useScheduledJobs`, `useJobsOverview`, `useJobRuns` (infinite, by cursor), `useRunJob`, `useUpdateJobDefinition`, `useResetJobDefinition`, `useRunAction("retry" \| "cancel")`, `useQueues`, `useQueueAction("pause" \| "resume")`, `useAudit` (infinite), `useAuditStats`, `useSystem`, `useOpsMail`, `useSendTestEmail`, `useSuppressions`, `useRemoveSuppression`, `useCurrentReleases`. Mutations toast on both outcomes and invalidate what they change; the settings and job definition ones leave `*_reason_required` and `*_version_conflict` to the form. Nothing is retried that won't change on its own (not connected, 4xx). |
@@ -196,7 +200,8 @@ the `/ops/*` endpoints the pages use, all from `lib/mock.ts`
 `devRequests`, `devLogs`, `devMigrations`, `devJobRuns`, `devMail`,
 `opsSettings`, `opsSettingHistory`, `opsJobDefinitions`, `opsJobRuns`,
 `opsQueues`, `opsAuditEvents`, `opsSystem`, `opsMail`, `opsSuppressions`,
-`opsReleasesCurrent`, `liveRequests`, `liveLogs`). The ops part keeps
+`opsReleasesCurrent`, `liveRequests`, `liveLogs`), plus the auth module's
+operator APIs from `lib/api/mock/auth.ts` (below). The ops part keeps
 state the way the app does: versions bump, reasons are required where the
 app requires them (422), a stale version is a 409, Run now is refused for a
 minute (429), a test email lands in the mock inbox, the audit log filters
@@ -253,6 +258,41 @@ lib/table-editor/
 **Migration-plan flow.** A schema change never runs directly. The form builds a `Change` (`lib/table-editor/plan.ts`); Preview posts it to `ddl/plan` and shows the Up and Down SQL, the notes, an "irreversible" badge and the migration file's path; Apply posts the same body to `ddl/apply` (with `allow_dirty` when the checkbox is on), which writes `db/migrations/<version>_<name>.sql` and queues `migrate`. The client then polls `/_portal/app/_dev/migrations` until `current` moved past what it read before the apply and `pending` is 0 (up to 15 s), drops every `db` query, and the sheet closes or selects the new table. Editing a column may need several migrations (alter, add_check, rename); they are planned and applied in order, and a failure keeps what was applied. Managed and system tables are refused by the portal (403 `system_table`); a dirty git tree is refused unless allowed, and the error is shown with a hint to tick the checkbox.
 
 **Mock mode.** `lib/api/mock/db.ts` is a small PostgreSQL in memory: schemas `public` and `auth`, tables `projects` (an enum, a `text[]`, a `jsonb`, a numeric), `tasks` (an identity key, a boolean, a date, a foreign key to projects), `auth_users` and `audit_events` (managed), `auth.sessions`, `notes` (no primary key), `river_job` (system), the view `active_projects`, and `pg_catalog.pg_class` behind the system switch. It answers every `db/*` endpoint: filters with all ten operators, sorts with nulls first/last, pages and counts, inserts with defaults and identity values, updates, deletes, all-or-nothing imports, and `ddl/plan` with SQL rendered like pgmeta's; `ddl/apply` refuses without `allow_dirty` (the sample repository has an uncommitted migration), then changes the catalog in memory so the demo shows the new column or table.
+
+## Authentication (`/auth`)
+
+Supabase Studio's Authentication section on gorbital's theme: the accounts
+of the app with search and keyset paging, one account's sessions, passkeys,
+linked providers, second factors and pending codes with every operator
+action of ADR-0070, the sign-in methods and the rate limiters. The backend
+is the auth module's `/ops/auth/users…` (`internal/modules/auth/delivery/ops_users.go`),
+the ops module's `/ops/auth/providers` and `/ops/auth/rate-limits`; the
+endpoints are listed in `docs/guides/ops-api.md` ("Accounts").
+
+```
+app/auth/page.tsx                 <Suspense> around the client component (the tab and the selected account are in the query string)
+components/auth/
+├── auth.tsx                      the page: Gate (ops), the three tabs (?tab=users|providers|rate-limits), the selected account (?user=)
+├── users.tsx                     search (q, debounced), the accounts table, "Load more" on next_cursor, the "New user" sheet
+├── user-sheet.tsx                one account: profile and actions (verify, ban with a reason, unban, act as user, delete typed), roles (grant from the
+│                                 catalogs of /_dev/app, revoke chips), sessions (revoke one, revoke all), passkeys, linked providers, second factors
+│                                 (enroll shows the secret and recovery codes once; reset), pending codes with a link to Mail; the shown-once dialogs
+├── providers.tsx                 cards from /ops/auth/providers: enabled with its detail, or the .env lines that turn it on and the guide section
+├── rate-limits.tsx               the limiters (name, what the key is, limits) and the reset form (limiter + key); the toast says reset: true/false
+└── common.tsx                    CopyButton, UserBadges, RoleChip, shortUserAgent
+lib/auth.ts                       mergeUserPages, grantableRoles / revocableRoles, codeState / codePurpose, limiterKeyExample, lastSeen
+lib/api/auth.ts                   the types and hooks (above)
+lib/api/bearer-token.ts           the token handed to the Routes page
+lib/api/mock/auth.ts              the mock (below)
+```
+
+**Data flow.** `useAuthUsers(q)` is an infinite query on `GET /ops/auth/users?q=&limit=&cursor=`; `mergeUserPages` flattens its pages and drops an account a refetched page repeats. A row opens the sheet, whose `useAuthUser(id)` reads everything about the account and refetches every 15 s; every mutation invalidates the lists, the detail and the audit queries. The role select offers the roles of every permission catalog the app declares (`/_dev/app`, so it needs the console), minus the implicit `user` role and those held; without catalogs it is a text field. Codes are listed without the code (they are stored hashed), with attempts and expiry; the link goes to the Mail screen, where the code is.
+
+**Act as user.** `POST …/impersonate` answers a session token once; the dialog shows it with Copy, and "Use in Routes" stores it with `storeBearerToken` and opens `/routes`, where the request builder reads it on mount, switches its auth mode to "Bearer token" and says whom it acts as. The app only impersonates while it runs with the dev console; elsewhere the 403 `impersonation_off` becomes a warning toast.
+
+**Refusals.** The screen renders under `Gate need="ops"`, so a stopped app or the Minimal preset shows the standard explanation; an app without the `auth` feature shows its own. Every write is a mutation with `errorMessage` in its error toast; `email_taken`, `invalid_email` and `weak_password` land under the field of the "New user" form.
+
+**Mock mode.** `lib/api/mock/auth.ts` keeps five accounts (the administrator with TOTP and a passkey, an `ops_viewer` with two sessions, a Google identity and a pending reset code, an unverified account with a verification code, a banned one, and one with GitHub only), answers every endpoint with the app's status and problem codes (`invalid_cursor`, `user_not_found`, `email_taken`, `weak_password`, `unknown_role`, `account_banned` on impersonating a banned account, `rate_limiter_not_found`), the eleven sign-in methods and three limiters with a few keys that answer `reset: true` once. `opsProxy` hands `/ops/auth/*` to it before its own routes; `resetMock` resets it.
 
 ## Primitives (`packages/ui/components`)
 

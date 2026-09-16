@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Activity, Boxes, ExternalLink, FolderGit2, Play, RotateCw, Square, Terminal } from "lucide-react";
 import { Badge, Dot } from "@gorbital/dash/components/badge";
 import { Button } from "@gorbital/dash/components/button";
@@ -11,7 +12,8 @@ import { Skeleton, SkeletonLines } from "@gorbital/dash/components/spinner";
 import { Tile, TileGrid } from "@gorbital/dash/components/tile";
 import { fmtDuration } from "@gorbital/dash/lib/format";
 import type { Tone } from "@gorbital/dash/theme";
-import { useAppAction, useDevApp, useReadiness, useStatus } from "@/lib/api/queries";
+import { useAppAction, useCapabilities, useDevApp, useDevMigrations, useReadiness, useStatus, useSystem } from "@/lib/api/queries";
+import { describeError } from "@/lib/api/errors";
 import type { AppState, LinkKey, Status } from "@/lib/api/types";
 import { useNow } from "@/lib/use-now";
 import { ConnectionProblem } from "./connection";
@@ -26,6 +28,10 @@ export function Overview() {
   const running = app?.state === "running";
   const readiness = useReadiness(running);
   const devApp = useDevApp(Boolean(running && app?.console));
+  const caps = useCapabilities();
+  const system = useSystem(caps.ops);
+  const migrations = useDevMigrations(caps.console && caps.database);
+  const pending = migrations.data?.pending ?? system.data?.database.migrations.pending ?? 0;
   const restart = useAppAction("restart");
   const stop = useAppAction("stop");
   const start = useAppAction("start");
@@ -77,7 +83,19 @@ export function Overview() {
                 unit={readiness.data ? String(readiness.data.status) : undefined}
                 loading={running && readiness.isPending}
                 deltaTone={readiness.data?.ok === false ? "bad" : "flat"}
-                footer={!running ? "app not running" : readiness.error ? <span className="text-danger">{readiness.error.message}</span> : "GET /readyz every 10 s"}
+                footer={
+                  !running ? (
+                    "app not running"
+                  ) : readiness.error ? (
+                    <span className="text-danger">{readiness.error.message}</span>
+                  ) : pending > 0 ? (
+                    <Link href="/database" className="inline-flex items-center gap-1.5 hover:underline">
+                      <Badge tone="warn">{pending} pending migration{pending === 1 ? "" : "s"}</Badge>
+                    </Link>
+                  ) : (
+                    "GET /readyz every 10 s"
+                  )
+                }
               />
             </TileGrid>
             <div className="grid grid-cols-[minmax(0,1fr)_360px] gap-3">
@@ -85,6 +103,7 @@ export function Overview() {
               <div className="flex flex-col gap-3">
                 <ProjectPanel status={status.data} />
                 <LinksPanel status={status.data} />
+                {caps.status.data?.project && (caps.status.data.project.features.includes("ops") || caps.status.data.project.preset === "full") && <HealthPanel running={running} consoleDeclared={caps.consoleDeclared} system={system} />}
                 <Panel title="Dev console" meta="/_dev/app" flush>
                   {!app ? (
                     <SkeletonLines lines={4} className="p-4" />
@@ -204,6 +223,46 @@ function LinksPanel({ status }: { status?: Status }) {
               </a>
             </li>
           ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
+/** The instance's readiness checks and migration state, from /ops/system, while the app runs. */
+function HealthPanel({ running, consoleDeclared, system }: { running: boolean; consoleDeclared?: boolean; system: ReturnType<typeof useSystem> }) {
+  const checks = system.data?.checks ?? [];
+  const failed = checks.filter((c) => c.status !== "ok").length;
+  const m = system.data?.database.migrations;
+  return (
+    <Panel title="Health" meta="/ops/system" actions={system.data && <Badge tone={failed > 0 || system.data.database.status !== "ok" ? "danger" : "ok"}>{failed > 0 ? `${failed} failed` : "all ok"}</Badge>} flush>
+      {!running ? (
+        <Empty title="App not running" hint="Checks run while the app is up." />
+      ) : system.error && !system.data ? (
+        <div className="p-4 text-[12px] text-muted">
+          <div className="font-medium text-text">{describeError(system.error, { scope: "ops", console: consoleDeclared }).title}</div>
+          <p className="mt-1">{describeError(system.error, { scope: "ops", console: consoleDeclared }).hint}</p>
+        </div>
+      ) : !system.data ? (
+        <SkeletonLines lines={3} className="p-4" />
+      ) : (
+        <ul>
+          {checks.map((c) => (
+            <li key={c.name} className="flex items-center gap-2 border-t border-hairline px-4 py-2 text-[12px] first:border-0">
+              <Dot tone={c.status === "ok" ? "ok" : "danger"} />
+              <span className="font-mono text-text">{c.name}</span>
+              <span className="ml-auto font-mono text-[11px] text-dim tnum">
+                {c.status} · {c.duration_ms} ms
+              </span>
+            </li>
+          ))}
+          <li className="flex items-center gap-2 border-t border-hairline px-4 py-2 text-[12px]">
+            <Dot tone={m && m.pending > 0 ? "warn" : "ok"} />
+            <Link href="/database" className="font-mono text-text hover:underline">
+              migrations
+            </Link>
+            <span className="ml-auto font-mono text-[11px] text-dim tnum">{m ? (m.pending > 0 ? `${m.pending} pending · ${m.current} → ${m.latest}` : `up to date · ${m.current}`) : "—"}</span>
+          </li>
         </ul>
       )}
     </Panel>

@@ -45,9 +45,13 @@ showing sample data). A browser overrides it at any time:
 localStorage.devtoolsData = "mock"   // or "live"; then reload
 ```
 
-Today the Overview page, the app chip and the version in the shell are
-live; the other Dev Portal pages still render from `lib/mock.ts` and will
-move over page by page.
+Every Dev Portal page is live: the Overview, Routes, Requests, Logs,
+Modules, Mail and Database read the dev console (`/_portal/app/_dev/*`),
+and Audit, Jobs, Settings, Mail and Database read the app's ops API
+(`/_portal/app/ops/*`), where `orb dev` sends its console token and the app
+treats it as a development operator with every `/ops` permission. Mock mode
+answers all of those endpoints too, with the same versions, reasons and rate
+limits.
 
 ## Run
 
@@ -97,12 +101,23 @@ rewrites; the exported build talks to whatever origin serves it. Without an
 ## Screens
 
 **Dev Portal** · Overview (the app's state, project, links, readiness, the
-dev console summary and a live output console with Restart / Stop / Start),
-Routes (explorer with a request builder that uses your session), Modules
-(the wiring in `internal/app`, drawn from source), Bootstrap (startup
-timeline per constructor), Audit (architectural lint), Jobs (run any
-definition now), Mail (the outbox `orb dev` captured), Settings (runtime
-settings with history), Database (migrations, tables, slow queries).
+health checks and pending migrations from `/ops/system`, the dev console
+summary and a live output console with Restart / Stop / Start), Routes (the
+live route list with a request builder that sends through the portal: path
+and query params, headers, a JSON body, the dev operator or a pasted bearer
+token; the answer with its headers, timing and a link to the request),
+Requests (every request the app answered, live-tailed from the console
+stream, with the log records of a request), Logs (live-tailed records with
+level and attribute filters), Modules (what the running app wired:
+libraries, API modules with route counts, jobs, settings, flags and
+permission catalogs), Audit (the app's audit log with filters, stats and
+cursor pagination), Jobs (definitions with Run now, enable, disable, edit and
+reset; runs with retry and cancel; queues with pause and resume; the
+scheduled list), Mail (the Mailpit inbox, the delivery configuration, a test
+email and the suppression list), Settings (runtime settings grouped, a typed
+editor with reasons and version conflicts, reset and history), Database
+(migrations with a working Apply, the pool, the health checks and the
+instance's runtime).
 
 **Observability Portal** · Overview, Requests (latency heatmap), Traces and a trace
 waterfall, Errors grouped by cause, Jobs and queues, Mail, Logs, Instances,

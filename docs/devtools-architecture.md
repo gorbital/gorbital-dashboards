@@ -1,8 +1,8 @@
 # Dev Portal architecture
 
-How `apps/devtools` is put together after Phase 0 (foundations): the data
-layer, what the UI knows about authentication, mock mode, the primitives it
-builds on, and how to add a page. The phase plan lives in the gorbital
+How `apps/devtools` is put together after Phase 1 (every screen connected):
+the data layer, what the UI knows about authentication, mock mode, the
+primitives it builds on, and how to add a page. The phase plan lives in the gorbital
 repository at `docs/dev-portal-roadmap.md`; the backend it talks to is
 `cli/internal/portal` (the portal API) and `modules/devconsole` (the app's
 dev console, ADR-0065).
@@ -13,17 +13,22 @@ dev console, ADR-0065).
 apps/devtools
 ├── app/                    App Router pages; server components that render one client component each
 │   ├── layout.tsx          fonts, the Shell, the DevtoolsProvider around everything
-│   ├── page.tsx            Overview (live)
-│   └── routes|modules|…    the other screens (mock, for now)
+│   ├── page.tsx            Overview
+│   └── routes|requests|logs|modules|audit|jobs|mail|settings|database
 ├── components/
-│   ├── overview/           Overview, OutputConsole, ConnectionProblem
+│   ├── overview/           Overview (with the health panel), OutputConsole, ConnectionProblem
+│   ├── routes/             the route list and the request builder
+│   ├── requests/, logs/    the two live-tailed pages; logs/log-line.tsx is the expandable record both use
+│   ├── modules/, audit/, jobs/, settings/, database/, mail/
+│   ├── shared/             Gate, ProblemPanel, ReasonDialog, QueryParam, KeyValueEditor (below)
 │   ├── app-chip.tsx        the shell's app chip, live
 │   ├── portal-version.tsx  the shell's version, live
-│   ├── search.tsx          the ⌘K palette's items (pages, routes, app actions)
-│   └── sidebar-nav.tsx     the nav; Overview gets a live dot while the app runs
+│   ├── search.tsx          the ⌘K palette: pages, the app's live routes, app actions
+│   └── sidebar-nav.tsx     the nav; live badges for routes, captured mail and pending migrations
 └── lib/
     ├── mock.ts             sample data for every page and for mock mode
-    ├── use-now.ts          a ticking clock for uptimes
+    ├── time.ts             clock, when, ago and between, for tables
+    ├── use-now.ts          a ticking clock for uptimes and "ago"
     └── api/                the data layer (below)
 ```
 
@@ -36,21 +41,25 @@ serves `out/` at `http://127.0.0.1:3100` and resolves `/routes` to
 
 | File | What it is |
 |---|---|
-| `types.ts` | Hand-written TypeScript for everything the UI reads: the portal API (`Status`, `AppStatus`, `OutputLine`, `PortalEvent`, generators) and the dev console (`DevApp`, `DevRouteList`, `DevRequestList`, `DevLogList`, `DevConfigList`, `DevMigrations`, `DevJobRunList`, `DevMail`), matching the Go types and `modules/devconsole/openapi.json` field for field. Errors are `Problem` (RFC 9457). |
-| `client.ts` | `apiFetch<T>(path, init)`: same-origin fetch with the cookie, the `X-Orb-Portal: 1` header on anything but GET/HEAD, JSON in and out. A problem response becomes `ApiError { status, code, detail, title, unauthorized }`; a request that never gets an answer becomes `NotConnectedError`. `subscribeEvents(onEvent, onStatus)`: the SSE subscription (below). |
+| `types.ts` | Hand-written TypeScript for everything the UI reads: the portal API (`Status`, `AppStatus`, `OutputLine`, `PortalEvent`, generators), the dev console (`DevApp`, `DevRouteList`, `DevRequestList`, `DevLogList`, `DevConfigList`, `DevMigrations`, `DevJobRunList`, `DevMail`, `DevStreamEvent`) and the ops API (`OpsSetting`, `OpsSettingChange`, `JobDefinition`, `JobRun`, `JobsOverview`, `Queue`, `AuditEvent`, `AuditStats`, `SystemInfo`, `MailStatus`, `Suppression`, `CurrentRelease` and the request bodies), matching the Go types, `modules/devconsole/openapi.json` and `examples/full-single/api/openapi.json` field for field. Errors are `Problem` (RFC 9457). |
+| `client.ts` | `apiFetch<T>(path, init)`: same-origin fetch with the cookie, the `X-Orb-Portal: 1` header on anything but GET/HEAD, JSON in and out. A problem response becomes `ApiError { status, code, detail, title, unauthorized }`; a request that never gets an answer becomes `NotConnectedError`. `subscribeSSE(path, onMessage, onStatus)`: any `text/event-stream` on the origin, with reconnects (below); `subscribeEvents` wraps it for the portal's own stream, `parseDevStreamEvent` reads the console's. |
 | `sse.ts` | `createSSEParser`: an incremental `text/event-stream` parser (any chunking, multi-line `data:`, comments, CRLF). `readSSE`: drives it from a `ReadableStream` until the stream ends or a signal aborts. |
+| `live.ts` | `useLiveTail<T>({ path, event, enabled, max })`: follows a console stream and keeps the newest items; `mergeTail` folds the list endpoint's backlog in behind them without duplicates. |
+| `errors.ts` | `describeError(err, { scope, console })`: what an error means by where it came from (a 401 from `/ops` while the app serves the console is an orb or app that predates the dev operator; a 404 from `/_dev` is an app without the console; 503 `unavailable` from `/_dev/mail` is Mailpit down…). `errorMessage` for toasts, `needsReason` and `isVersionConflict` for the `*_reason_required` and `*_version_conflict` families. |
+| `request-builder.ts` | The Routes page's builder as pure functions: `pathParams`, `fillPath`, `buildQuery`, `buildRequest` (the URL through `/_portal/app` and the `RequestInit`, with the mutation header, a pasted bearer token, the JSON body) and `sendRequest`, which measures the answer and keeps the headers worth showing. |
+| `setting-value.ts` | Typed input for runtime settings: `formatSettingValue` and `parseSettingValue` per kind (`bool`, `int`, `float`, `string`, `enum`, `duration`, `string_list`) against the constraints (`min`, `max`, `one_of`, `max_len`, `max_items`, `format`), Go durations (`durationMs`, `shortDuration`), `describeConstraints` for the hint line. |
 | `store.ts` | The console store: the latest `AppStatus` from the stream, the output tail (capped at 2,000 lines like orb's own buffer), the dropped count and the connection state, read with `useConsole()` (`useSyncExternalStore`). `mergeLines` folds `/output` into what the stream delivered without duplicates and in time order. |
-| `queries.ts` | React Query hooks: `useStatus` (every 5 s), `useOutput`, `useDevApp`, `useDevRoutes`, `useReadiness` (`/readyz` every 10 s while running), and `useAppAction("restart" \| "stop" \| "start")` with toasts. Nothing is retried that won't change on its own (not connected, 4xx). |
+| `queries.ts` | React Query hooks. Portal: `useStatus` (every 5 s), `useCapabilities` (what the status says the app can answer: `running`, `console`, `ops`, `database`), `useOutput`, `useReadiness`, `useAppAction`, `useMigrate`. Console: `useDevApp`, `useDevRoutes`, `useDevRequests`, `useDevLogs`, `useDevMigrations`, `useDevMail`. Ops: `useSettings`, `useSettingHistory`, `useSetSetting`, `useResetSetting`, `useJobDefinitions`, `useScheduledJobs`, `useJobsOverview`, `useJobRuns` (infinite, by cursor), `useRunJob`, `useUpdateJobDefinition`, `useResetJobDefinition`, `useRunAction("retry" \| "cancel")`, `useQueues`, `useQueueAction("pause" \| "resume")`, `useAudit` (infinite), `useAuditStats`, `useSystem`, `useOpsMail`, `useSendTestEmail`, `useSuppressions`, `useRemoveSuppression`, `useCurrentReleases`. Mutations toast on both outcomes and invalidate what they change; the settings and job definition ones leave `*_reason_required` and `*_version_conflict` to the form. Nothing is retried that won't change on its own (not connected, 4xx). |
 | `provider.tsx` | `DevtoolsProvider`: the `QueryClient`, the `Toaster`, the `TooltipProvider`, and the one events subscription for the whole app. |
 | `mode.ts` | `dataMode()`: `"live"` or `"mock"` (below). |
 | `mock/index.ts` | The in-memory `orb dev` for mock mode. |
 
 ### Live state: how a change reaches the page
 
-1. `DevtoolsProvider` calls `subscribeEvents` once. It fetches
-   `/_portal/api/events` with `fetch` (not `EventSource`: the cookie's
-   protections and reconnect policy stay under our control) and reads the
-   body with `readSSE`.
+1. `DevtoolsProvider` calls `subscribeEvents` once. It is `subscribeSSE`
+   on `/_portal/api/events`: a `fetch` (not `EventSource`: the cookie's
+   protections and reconnect policy stay under our control) whose body
+   `readSSE` reads.
 2. The first event is a bare `AppStatus`; `parseEvent` wraps it as a
    `state` event. After that come `output`, `state` and `dropped` events,
    keep-alive comments every 15 s, and a final `end` after 30 minutes or when
@@ -70,6 +79,19 @@ serves `out/` at `http://127.0.0.1:3100` and resolves `/routes` to
 
 `useStatus` still polls every 5 s so a page that loads before the stream
 opens, or a stream that quietly dies, never shows stale state for long.
+
+### The console's streams, through the proxy
+
+The Requests and Logs pages follow `/_portal/app/_dev/requests/stream` and
+`/_portal/app/_dev/logs/stream` with the same `subscribeSSE`: orb dev
+proxies the stream unbuffered (`FlushInterval: -1`) and adds the console
+token, so the UI reads it like any other same-origin stream. `useLiveTail`
+keeps each `request` or `log` event at the front of its list and counts
+`dropped`; the page fetches the list endpoint too and `mergeTail` puts the
+backlog behind what the stream delivered, keyed so an item seen both ways
+shows once. `end` (30 minutes, or the app restarting) reconnects with the
+same backoff as the portal's stream; the list refetch on the next `running`
+state fills the gap.
 
 ### Authentication, from the UI's side
 
@@ -94,6 +116,45 @@ when proxying `/_portal/app/_dev/*`, so the UI calls the proxy like any
 other endpoint. `app.console` in the status says whether the app serves the
 console at all; hooks that need it take an `enabled` flag.
 
+### The ops API, as the development operator
+
+The app's admin API (`/ops/*`, Full preset; `docs/guides/ops-api.md` in the
+gorbital repository) normally wants a signed-in session with a platform
+role. In development orb dev sends its console token to `/_portal/app/ops/*`
+as well, and the app treats that bearer as a **development operator** with
+every `/ops` permission (ADR-0066). The UI therefore calls `/ops` plainly:
+no token, no session of its own. What comes back is attributed to the
+operator (`actor_kind: system`, label `dev console (orb dev)` in the audit
+log and in history).
+
+Two answers need explaining rather than a generic error, and
+`describeError` does it:
+
+| What the client sees | What it means | What the page shows |
+|---|---|---|
+| 401 `unauthenticated` from `/ops` while `app.console` is true | the running orb or app predates the operator | "The app doesn't accept the dev operator yet": rebuild with the current orb and restart |
+| 404 from `/_dev/*` | the app has no console (created before v1.1, or `DEV_CONSOLE_TOKEN` unset) | "This app has no dev console" |
+
+`useCapabilities` reads the status once for every page: `running`,
+`console` (running and `app.console`), `ops` (running and the project lists
+the `ops` feature or is the Full preset) and `database`. The `Gate`
+component renders a page's body only when what it needs is there, and the
+right explanation otherwise (not connected, not signed in, app stopped, no
+console, Minimal preset); `ProblemPanel` shows a request's error with
+`describeError`'s title and hint.
+
+Changes on `/ops` carry the `version` the page last read and, where the app
+insists, a `reason`: settings marked `reason_required`, disabling or
+rescheduling a job, changing its timeout, attempts or queue (and undoing
+those), pausing a queue, removing a suppression. The forms ask up front
+where the answer says so and otherwise on the 422 `*_reason_required`; a
+409 `*_version_conflict` refetches and tells the user to look again.
+`POST …/run` answers 429 `job_run_limited` within a minute of the last run,
+`POST /ops/mail/test` 429 `rate_limited` after five an hour; both become
+warnings, not errors. `POST /_portal/api/app/migrate` asks orb dev to run
+the app's migrator without a restart (202; 409 for an app without a
+database).
+
 ### Development proxy
 
 `next dev` runs on 3101 and rewrites `/_portal/:path*` to
@@ -114,17 +175,26 @@ otherwise when the build set `NEXT_PUBLIC_DEVTOOLS_DATA=mock`, otherwise
 `lib/api/mock/index.ts` instead of the browser's `fetch`.
 
 The mock is an `orb dev` in memory: it answers `/_portal/api/status`,
-`/output`, `/events`, the three app actions (with the same 409 refusals and
-the same `X-Orb-Portal` check), the generator `plan`/`apply` endpoints, and
-`/_portal/app/readyz` plus every `/_dev/*` endpoint, all from
-`lib/mock.ts` (`portalStatus`, `outputLines`, `devApp`, `devRoutes`,
-`devConfig`, `devRequests`, `devLogs`, `devMigrations`, `devJobRuns`,
-`devMail`). Its events endpoint returns a real `ReadableStream` in SSE
-format (a state event, then an output line every 4 s while the app "runs"),
-so the parser, the store and the reconnect logic run the same code in both
-modes. Restart takes 1.8 s and goes through `building`; Stop and Start
-change the state at once. Responses are `Response` objects with the right
-content types, so `apiFetch`'s error handling is exercised too.
+`/output`, `/events`, the app actions (with the same 409 refusals and the
+same `X-Orb-Portal` check), `app/migrate` (pending goes to 0 after 1.5 s,
+with orb lines in the console), the generator `plan`/`apply` endpoints,
+`/_portal/app/readyz`, every `/_dev/*` endpoint and its two streams, and
+the `/ops/*` endpoints the pages use, all from `lib/mock.ts`
+(`portalStatus`, `outputLines`, `devApp`, `devRoutes`, `devConfig`,
+`devRequests`, `devLogs`, `devMigrations`, `devJobRuns`, `devMail`,
+`opsSettings`, `opsSettingHistory`, `opsJobDefinitions`, `opsJobRuns`,
+`opsQueues`, `opsAuditEvents`, `opsSystem`, `opsMail`, `opsSuppressions`,
+`opsReleasesCurrent`, `liveRequests`, `liveLogs`). The ops part keeps
+state the way the app does: versions bump, reasons are required where the
+app requires them (422), a stale version is a 409, Run now is refused for a
+minute (429), a test email lands in the mock inbox, the audit log filters
+and pages by cursor. Its stream endpoints return real `ReadableStream`s in
+SSE format (a state event then an output line every 4 s; a request every
+3.5 s and a log record every 2.8 s), so the parser, the stores and the
+reconnect logic run the same code in both modes. Restart takes 1.8 s and
+goes through `building`; Stop and Start change the state at once. Responses
+are `Response` objects with the right content types, so `apiFetch`'s error
+handling is exercised too.
 
 The public demo builds with `NEXT_PUBLIC_DEVTOOLS_DATA=mock`
 (`apps/devtools/vercel.json`).
@@ -169,21 +239,30 @@ and only attach handlers when a client caller passes them.
    or serving the console, the shared `retry`. Mutations use `useMutation`
    with toasts on both outcomes and invalidate what they change.
 4. **Page.** `app/<name>/page.tsx` stays a server component that renders a
-   client component from `components/<name>/`. Render skeletons
+   client component from `components/<name>/`. Wrap the body in `Gate`
+   with what it needs (`console`, `ops` or `database`), render skeletons
    (`Tile loading`, `Table loading`, `SkeletonLines`) while `isPending`,
-   `Empty` for no data, and `ConnectionProblem` when `error` is set and
-   there's no data, so the prerender and the first client render agree.
+   `Empty` for no data, and `ProblemPanel` (with the request's `scope`)
+   when `error` is set and there's no data, so the prerender and the first
+   client render agree. Entity selection lives in a query parameter
+   (`?id=`, `?key=`, `?route=`) read by `QueryParam` inside a `Suspense`
+   and written with `setQueryParam`; never a dynamic segment, which the
+   static export can't carry. Changes that need a reason go through
+   `ReasonDialog`.
 5. **Nav and palette.** Add the entry to `components/sidebar-nav.tsx` and the
    page to `components/search.tsx`.
 6. **Tests.** Pure logic (parsers, merges, transports) gets a `*.test.ts` next
    to it; `pnpm --filter devtools test` runs vitest in the node environment.
 
-## What Phase 0 leaves for later
+## What Phase 1 leaves for later
 
-- The Routes, Modules, Bootstrap, Audit, Jobs, Mail, Settings and Database
-  pages still render from `lib/mock.ts`; their live versions read
-  `/_dev/routes`, `/_dev/app`, `/_dev/jobs`, `/_dev/mail`, `/_dev/config` and
-  `/_dev/migrations` through the hooks and shapes that now exist.
+- Table sizes and slow queries on the Database page, and the SQL spans of a
+  request in the builder, wait for the backend pieces of Phase 2 and Phase 8.
+- The request builder's "None" auth mode sends no header, but the proxy
+  still adds the dev operator on `/ops` and `/_dev`; a pasted bearer token
+  is the way to override it until the proxy learns an opt-out.
+- `/_dev/config` (the environment as the app read it) has a type and a
+  mock but no page yet.
 - The generator endpoints have types and a mock but no UI.
 - The version in the shell reads `portal.version` (the orb version); the
   fallback before the portal answers is still `v0.1`.

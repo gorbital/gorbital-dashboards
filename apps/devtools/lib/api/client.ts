@@ -1,6 +1,6 @@
 import { dataMode } from "./mode";
-import { readSSE } from "./sse";
-import type { AppStatus, OutputLine, PortalEvent, Problem } from "./types";
+import { readSSE, type SSEMessage } from "./sse";
+import type { AppStatus, DevStreamEvent, OutputLine, PortalEvent, Problem } from "./types";
 
 /** Every request that isn't GET or HEAD must carry it; the portal refuses the rest with 403. */
 export const MUTATION_HEADER = "X-Orb-Portal";
@@ -103,7 +103,7 @@ function codeFor(status: number): string {
   return { 401: "unauthorized", 403: "forbidden", 404: "not_found", 409: "conflict", 429: "rate_limited", 502: "app_unavailable" }[status] ?? "error";
 }
 
-/* ---------- Events ---------- */
+/* ---------- Server-Sent Events ---------- */
 
 export type EventsStatus =
   | { state: "connecting"; attempt: number }
@@ -113,13 +113,15 @@ export type EventsStatus =
 const backoff = { min: 1000, max: 10_000 };
 
 /**
- * Subscribes to `/_portal/api/events` with fetch (EventSource can't carry
- * the cookie's protections nor let us control reconnects). The first
- * `state` event carries a bare AppStatus; it is normalised into a
- * `PortalEvent`. After `end` or any failure the stream reconnects with a
- * 1 s → 10 s backoff. Returns the function that stops it.
+ * Subscribes to a `text/event-stream` on the portal's origin with fetch
+ * (EventSource can't carry the cookie's protections nor let us control
+ * reconnects). Every message reaches `onMessage` except `end`, which closes
+ * the stream cleanly; after `end` or any failure the stream reconnects with
+ * a 1 s → 10 s backoff. Returns the function that stops it. Both the portal's
+ * `/_portal/api/events` and the dev console's streams under `/_dev/` (through the
+ * proxy) speak this shape.
  */
-export function subscribeEvents(onEvent: (e: PortalEvent) => void, onStatus?: (s: EventsStatus) => void): () => void {
+export function subscribeSSE(path: string, onMessage: (m: SSEMessage) => void, onStatus?: (s: EventsStatus) => void): () => void {
   const controller = new AbortController();
   const { signal } = controller;
   let attempt = 0;
@@ -138,7 +140,7 @@ export function subscribeEvents(onEvent: (e: PortalEvent) => void, onStatus?: (s
     onStatus?.({ state: "connecting", attempt });
     let res: Response;
     try {
-      res = await transportFetch("/_portal/api/events", { ...portalInit({ headers: { Accept: "text/event-stream" } }), signal, cache: "no-store" });
+      res = await transportFetch(path, { ...portalInit({ headers: { Accept: "text/event-stream" } }), signal, cache: "no-store" });
     } catch (err) {
       if (signal.aborted) return;
       return schedule("error", new NotConnectedError(err));
@@ -163,8 +165,7 @@ export function subscribeEvents(onEvent: (e: PortalEvent) => void, onStatus?: (s
             ended = true;
             return;
           }
-          const e = parseEvent(m.event, m.data);
-          if (e) onEvent(e);
+          onMessage(m);
         },
         signal,
       );
@@ -181,6 +182,39 @@ export function subscribeEvents(onEvent: (e: PortalEvent) => void, onStatus?: (s
     controller.abort();
     if (timer) clearTimeout(timer);
   };
+}
+
+/**
+ * The portal's own stream, `/_portal/api/events`. The first `state` event
+ * carries a bare AppStatus; it is normalised into a `PortalEvent`.
+ */
+export function subscribeEvents(onEvent: (e: PortalEvent) => void, onStatus?: (s: EventsStatus) => void): () => void {
+  return subscribeSSE(
+    "/_portal/api/events",
+    (m) => {
+      const e = parseEvent(m.event, m.data);
+      if (e) onEvent(e);
+    },
+    onStatus,
+  );
+}
+
+/**
+ * A dev console stream (`/_dev/requests/stream`, `/_dev/logs/stream`): each
+ * message named `event` is one item, `dropped` counts what the client missed.
+ */
+export function parseDevStreamEvent<T>(event: string, itemEvent: string, data: string): DevStreamEvent<T> | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(data);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object") return null;
+  if (event === itemEvent) return { type: "item", item: parsed as T };
+  if (event === "dropped" && typeof (parsed as { count?: unknown }).count === "number") return { type: "dropped", count: (parsed as { count: number }).count };
+  if (event === "end") return { type: "end", reason: String((parsed as { reason?: unknown }).reason ?? "") };
+  return null;
 }
 
 /** Turns one SSE message into a `PortalEvent`; unknown events and malformed data give null. */

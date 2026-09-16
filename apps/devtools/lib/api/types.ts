@@ -351,3 +351,326 @@ export type Readiness = {
   /** The response body, trimmed, when short enough to show. */
   body?: string;
 };
+
+/* ---------- Dev console streams ---------- */
+
+/** What `/_dev/requests/stream` and `/_dev/logs/stream` deliver, after the client parses the message. */
+export type DevStreamEvent<T> = { type: "item"; item: T } | { type: "dropped"; count: number } | { type: "end"; reason: string };
+
+/* ---------- Ops API (/ops/*), reached as the development operator ---------- */
+
+/**
+ * The app's admin API (docs/guides/ops-api.md, `examples/full-single/api/openapi.json`).
+ * orb dev adds the console token to `/_portal/app/ops/*`; the app treats it as a
+ * development operator with every `/ops` permission, so the UI sends nothing of its own.
+ */
+
+/** Setting kinds as `modules/settings` declares them. */
+export type SettingKind = "bool" | "int" | "float" | "string" | "enum" | "duration" | "string_list";
+
+/** Validation summary: `min`, `max`, `one_of`, `max_len`, `max_items`; the keys depend on the kind. */
+export type SettingConstraints = {
+  min?: number | string;
+  max?: number | string;
+  one_of?: string[];
+  max_len?: number;
+  max_items?: number;
+} & Record<string, unknown>;
+
+export type OpsSetting = {
+  key: string;
+  kind: SettingKind | string;
+  group: string;
+  description: string;
+  /** Effective value, JSON of the kind. */
+  value: unknown;
+  /** Value declared in code. */
+  default: unknown;
+  /** A stored value overrides the default. */
+  modified: boolean;
+  /** The stored value fails validation, so the default applies. */
+  invalid_stored_value: boolean;
+  /** Send back when changing the setting. */
+  version: number;
+  updated_at?: string;
+  updated_by?: string;
+  reason_required: boolean;
+  restart_required: boolean;
+  restart_pending: boolean;
+  constraints?: SettingConstraints;
+  org_overridable: boolean;
+};
+
+export type OpsSettingList = { settings: OpsSetting[] | null };
+
+export type SetSettingBody = { value: unknown; version: number; reason?: string };
+export type ResetSettingBody = { version: number; reason?: string };
+
+export type OpsSettingChange = {
+  id: number;
+  key: string;
+  /** null means the default. */
+  old_value: unknown;
+  /** null means the default. */
+  new_value: unknown;
+  version: number;
+  reason?: string;
+  actor_kind: string;
+  actor_id: string;
+  request_id?: string;
+  changed_at: string;
+};
+
+export type OpsSettingHistory = { changes: OpsSettingChange[] | null };
+
+export type JobConfig = {
+  enabled: boolean;
+  /** 5-field cron in UTC, `@every` duration, or empty for on-demand. */
+  schedule: string;
+  /** Go duration. */
+  timeout: string;
+  max_attempts: number;
+  queue: string;
+  priority: number;
+};
+
+export type JobRunState = "available" | "cancelled" | "completed" | "discarded" | "pending" | "retryable" | "running" | "scheduled";
+
+export type JobRunError = { at: string; attempt: number; message: string };
+
+export type JobRun = {
+  id: number;
+  kind: string;
+  queue: string;
+  state: JobRunState | string;
+  attempt: number;
+  max_attempts: number;
+  priority: number;
+  created_at: string;
+  scheduled_at: string;
+  attempted_at?: string;
+  finalized_at?: string;
+  errors?: JobRunError[] | null;
+  request_id?: string;
+  actor_kind?: string;
+  actor_id?: string;
+};
+
+export type JobRunPage = { jobs: JobRun[] | null; next_cursor?: string };
+
+export type JobDefinition = {
+  name: string;
+  description: string;
+  config: JobConfig;
+  defaults: JobConfig;
+  modified: boolean;
+  /** The stored override fails validation, so the defaults apply. */
+  invalid_override: boolean;
+  /** Send back when changing the definition. */
+  version: number;
+  updated_at?: string;
+  updated_by?: string;
+  /** Approximate next scheduled run. */
+  next_run_at?: string;
+  last_run?: JobRun;
+};
+
+export type JobDefinitionList = { definitions: JobDefinition[] | null };
+
+/** `PUT /ops/jobs/definitions/{name}`: only the sent fields change. */
+export type UpdateJobDefinitionBody = {
+  enabled?: boolean;
+  schedule?: string;
+  timeout?: string;
+  max_attempts?: number;
+  queue?: string;
+  priority?: number;
+  version: number;
+  reason?: string;
+};
+
+export type QueueOverview = {
+  name: string;
+  /** Some instance runs workers for the queue. */
+  active: boolean;
+  paused: boolean;
+  available: number;
+  scheduled: number;
+  running: number;
+  retryable: number;
+  /** Jobs that ran out of attempts in the last 24 hours. */
+  discarded_last_day: number;
+};
+
+export type JobsOverview = {
+  /** Queues with active workers or unfinished jobs, by name. */
+  queues: QueueOverview[] | null;
+  /** Definitions whose most recent run is retrying or was discarded. */
+  failing: JobDefinition[] | null;
+};
+
+export type Queue = {
+  name: string;
+  paused: boolean;
+  paused_at?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type QueueList = { queues: Queue[] | null };
+
+export type QueueControlBody = { reason?: string };
+
+export type AuditOutcome = "success" | "failure" | "denied";
+
+export type AuditEvent = {
+  id: number;
+  occurred_at: string;
+  recorded_at: string;
+  actor_kind: string;
+  actor_id?: string;
+  actor_label?: string;
+  action: string;
+  resource_type?: string;
+  resource_id?: string;
+  org_id?: string;
+  outcome: AuditOutcome;
+  /** Action-specific detail; sensitive keys are redacted. */
+  metadata: Record<string, unknown>;
+  request_id?: string;
+  trace_id?: string;
+  ip?: string;
+  user_agent?: string;
+};
+
+export type AuditEventPage = { events: AuditEvent[] | null; next_cursor?: string };
+
+/** The filters `GET /ops/audit` accepts; every one optional. */
+export type AuditFilter = {
+  actor_kind?: string;
+  actor_id?: string;
+  action?: string;
+  action_prefix?: string;
+  resource_type?: string;
+  resource_id?: string;
+  org_id?: string;
+  outcome?: AuditOutcome;
+  request_id?: string;
+  /** RFC 3339, inclusive. */
+  from?: string;
+  /** RFC 3339, exclusive. */
+  to?: string;
+  limit?: number;
+};
+
+export type AuditGroupBy = "action" | "outcome" | "actor_kind" | "resource_type" | "day";
+
+export type AuditStatsGroup = { key: string; count: number };
+
+export type AuditStats = {
+  from: string;
+  to: string;
+  group_by: AuditGroupBy;
+  total: number;
+  /** Largest first, at most 50; every day in order for `day`. */
+  groups: AuditStatsGroup[] | null;
+  /** Events in groups beyond the first 50. */
+  other: number;
+};
+
+export type SystemCheck = { name: string; status: "ok" | "error"; duration_ms: number };
+
+export type PoolStats = {
+  total: number;
+  idle: number;
+  in_use: number;
+  max: number;
+  acquires: number;
+  average_acquire_ms: number;
+  /** Acquires that waited because no connection was idle. */
+  empty_acquires: number;
+  canceled_acquires: number;
+};
+
+export type MigrationStatus = { current: number; latest: number; pending: number };
+
+export type SystemInfo = {
+  instance: {
+    id: string;
+    version: string;
+    commit?: string;
+    build_time?: string;
+    /** Built with uncommitted changes. */
+    modified: boolean;
+    started_at: string;
+    uptime_seconds: number;
+  };
+  /** Readiness checks, as /readyz runs them. */
+  checks: SystemCheck[] | null;
+  database: {
+    status: "ok" | "error";
+    /** What failed; never the driver's message. */
+    error?: string;
+    ping_ms: number;
+    pool: PoolStats;
+    migrations: MigrationStatus;
+  };
+  runtime: {
+    go_version: string;
+    gomaxprocs: number;
+    goroutines: number;
+    heap_in_use_bytes: number;
+    last_gc_pause_ms: number;
+    gcs: number;
+  };
+  jobs: { workers: number; queues: string[] | null };
+};
+
+export type MailStatus = {
+  provider: "resend" | "smtp" | string;
+  /** mailpit: every email goes to the development inbox; provider: real email. */
+  delivery: "mailpit" | "provider" | string;
+  /** Provider configuration from the environment, without secrets. */
+  details: Record<string, string>;
+  from_name: string;
+  from_email: string;
+  reply_to?: string;
+};
+
+export type TestEmailBody = { to: string };
+export type TestEmailResponse = { status: "queued"; to: string; delivery: "mailpit" | "provider" | string };
+
+export type Suppression = {
+  id: number;
+  /** Normalised: trimmed and in lower case. */
+  email: string;
+  reason: "bounce" | "complaint" | string;
+  /** Who reported it. */
+  source: string;
+  detail?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SuppressionPage = { suppressions: Suppression[] | null; next_cursor?: string };
+
+export type RemoveSuppressionBody = { reason: string };
+
+export type ReleaseInstance = {
+  id: number;
+  instance_id: string;
+  version: string;
+  commit?: string;
+  build_time?: string;
+  modified: boolean;
+  go_version?: string;
+  host?: string;
+  started_at: string;
+  last_seen_at: string;
+  stopped_at?: string;
+  running: boolean;
+};
+
+export type CurrentRelease = { version: string; commit?: string; instances: ReleaseInstance[] | null };
+
+export type CurrentReleases = { releases: CurrentRelease[] | null };

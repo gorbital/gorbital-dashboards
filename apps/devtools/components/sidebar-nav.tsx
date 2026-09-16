@@ -1,13 +1,16 @@
 "use client";
 
-import { Boxes, Database, Gauge, LayoutDashboard, Mail, Route, ShieldCheck, SlidersHorizontal, Zap } from "lucide-react";
+import { Boxes, Database, LayoutDashboard, ListOrdered, Mail, Route, ScrollText, ShieldCheck, SlidersHorizontal, Zap } from "lucide-react";
 import { Nav } from "@gorbital/dash/components/nav";
-import { useStatus } from "@/lib/api/queries";
-import { bootstrapTotal, findings, outbox, routes } from "@/lib/mock";
+import { useCapabilities, useDevMail, useDevMigrations, useDevRoutes } from "@/lib/api/queries";
 
+/** The nav; badges carry live counts where one request buys them: routes, captured mail, pending migrations. */
 export function SidebarNav() {
-  const { data } = useStatus();
-  const running = data?.app.state === "running";
+  const { running, console, database } = useCapabilities();
+  const routes = useDevRoutes(console);
+  const migrations = useDevMigrations(console && database);
+  const mail = useDevMail(console);
+  const pending = migrations.data?.pending ?? 0;
   return (
     <Nav
       sections={[
@@ -18,19 +21,20 @@ export function SidebarNav() {
         {
           title: "Inspect",
           items: [
-            { label: "Routes", href: "/routes", icon: Route, badge: routes.length },
+            { label: "Routes", href: "/routes", icon: Route, badge: routes.data?.routes.length },
+            { label: "Requests", href: "/requests", icon: ListOrdered },
+            { label: "Logs", href: "/logs", icon: ScrollText },
             { label: "Modules", href: "/modules", icon: Boxes },
-            { label: "Bootstrap", href: "/bootstrap", icon: Gauge, badge: `${Math.round(bootstrapTotal)} ms` },
-            { label: "Audit", href: "/audit", icon: ShieldCheck, badge: findings.filter((f) => f.level === "error").length, tone: "hot" },
+            { label: "Audit", href: "/audit", icon: ShieldCheck },
           ],
         },
         {
           title: "Bench",
           items: [
             { label: "Jobs", href: "/jobs", icon: Zap },
-            { label: "Mail", href: "/mail", icon: Mail, badge: outbox.length },
+            { label: "Mail", href: "/mail", icon: Mail, badge: mail.data ? mail.data.total : undefined },
             { label: "Settings", href: "/settings", icon: SlidersHorizontal },
-            { label: "Database", href: "/database", icon: Database },
+            { label: "Database", href: "/database", icon: Database, badge: pending > 0 ? `${pending} pending` : undefined, tone: pending > 0 ? "hot" : undefined },
           ],
         },
       ]}

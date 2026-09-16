@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, MUTATION_HEADER, NotConnectedError, apiFetch, parseEvent, subscribeEvents, type EventsStatus } from "./client";
-import type { PortalEvent } from "./types";
+import { ApiError, MUTATION_HEADER, NotConnectedError, apiFetch, parseDevStreamEvent, parseEvent, subscribeEvents, subscribeSSE, type EventsStatus } from "./client";
+import type { DevStreamEvent, PortalEvent } from "./types";
 
 const fetchMock = vi.fn<typeof fetch>();
 
@@ -166,5 +166,40 @@ describe("subscribeEvents", () => {
     await vi.advanceTimersByTimeAsync(10_000);
     expect(closed().at(-1)).toMatchObject({ reason: "unauthorized", retryIn: 10_000 });
     stop();
+  });
+});
+
+describe("subscribeSSE and parseDevStreamEvent", () => {
+  it("delivers every named message from a dev console stream and parses items, dropped and end", async () => {
+    vi.useFakeTimers();
+    fetchMock.mockResolvedValueOnce(
+      sse(['retry: 3000\n\nevent: request\ndata: {"time":"t","method":"GET","route":"/v1/ping","path":"/v1/ping","status":200,"duration_ms":0.4}\n\n: keep-alive\n\nevent: dropped\ndata: {"count":2}\n\nevent: end\ndata: {"reason":"shutdown"}\n\n']),
+    );
+    fetchMock.mockRejectedValue(new TypeError("gone"));
+    const seen: DevStreamEvent<{ path: string }>[] = [];
+    const statuses: EventsStatus[] = [];
+    const stop = subscribeSSE(
+      "/_portal/app/_dev/requests/stream",
+      (m) => {
+        const e = parseDevStreamEvent<{ path: string }>(m.event, "request", m.data);
+        if (e) seen.push(e);
+      },
+      (s) => statuses.push(s),
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchMock.mock.calls[0][0]).toBe("/_portal/app/_dev/requests/stream");
+    expect(seen).toEqual([
+      { type: "item", item: expect.objectContaining({ path: "/v1/ping" }) },
+      { type: "dropped", count: 2 },
+    ]);
+    // `end` closes the stream cleanly and schedules a reconnect rather than reaching onMessage.
+    expect(statuses.at(-1)).toMatchObject({ state: "closed", reason: "end", retryIn: 1000 });
+    stop();
+  });
+
+  it("parseDevStreamEvent ignores other event names and bad data", () => {
+    expect(parseDevStreamEvent("log", "request", '{"a":1}')).toBeNull();
+    expect(parseDevStreamEvent("request", "request", "nope")).toBeNull();
+    expect(parseDevStreamEvent("end", "request", '{"reason":"max_duration"}')).toEqual({ type: "end", reason: "max_duration" });
   });
 });

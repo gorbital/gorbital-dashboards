@@ -11,6 +11,8 @@ export default function nextConfig(phase: string): NextConfig {
     // the proxy to orb dev exists only while `next dev` runs.
     ...(dev ? { rewrites: async () => [{ source: "/_portal/:path*", destination: `${portalUrl}/_portal/:path*` }] } : { output: "export" }),
     trailingSlash: false,
+    // The dev server is opened as localhost or 127.0.0.1 (the cookie's host decides); both may load its dev resources.
+    allowedDevOrigins: ["localhost", "127.0.0.1"],
     images: { unoptimized: true },
     transpilePackages: ["@gorbital/dash"],
     agentRules: false,

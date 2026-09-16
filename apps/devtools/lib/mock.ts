@@ -215,7 +215,7 @@ const iso = (ts: number) => new Date(ts).toISOString();
 
 /** GET /_portal/api/status as the mock transport first answers it; the mock supervisor mutates `app`. */
 export const portalStatus: Status = {
-  portal: { version: "1.3.0", ui: "bundled", started_at: iso(NOW - 3 * HOUR - 2 * MIN) },
+  portal: { version: "1.3.0", ui: "bundled", started_at: iso(NOW - 3 * HOUR - 2 * MIN), database: true },
   project: {
     name: "acme-api",
     module: "github.com/acme/acme-api",

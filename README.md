@@ -52,6 +52,8 @@ and Audit, Jobs, Settings, Mail and Database read the app's ops API
 treats it as a development operator with every `/ops` permission. Mock mode
 answers all of those endpoints too, with the same versions, reasons and rate
 limits.
+The Table Editor reads and changes the database through the portal's own
+API (`/_portal/api/db/*`).
 
 ## Run
 

@@ -21,6 +21,7 @@ apps/devtools
 │   ├── requests/, logs/    the two live-tailed pages; logs/log-line.tsx is the expandable record both use
 │   ├── modules/, audit/, jobs/, settings/, database/, mail/
 │   ├── shared/             Gate, ProblemPanel, ReasonDialog, QueryParam, KeyValueEditor (below)
+│   ├── table-editor/       the Table Editor (Phase 2, below)
 │   ├── app-chip.tsx        the shell's app chip, live
 │   ├── portal-version.tsx  the shell's version, live
 │   ├── search.tsx          the ⌘K palette: pages, the app's live routes, app actions
@@ -29,6 +30,7 @@ apps/devtools
     ├── mock.ts             sample data for every page and for mock mode
     ├── time.ts             clock, when, ago and between, for tables
     ├── use-now.ts          a ticking clock for uptimes and "ago"
+    ├── table-editor/       the Table Editor's pure logic: URL state, literals, CSV, plan builders
     └── api/                the data layer (below)
 ```
 
@@ -53,6 +55,8 @@ serves `out/` at `http://127.0.0.1:3100` and resolves `/routes` to
 | `provider.tsx` | `DevtoolsProvider`: the `QueryClient`, the `Toaster`, the `TooltipProvider`, and the one events subscription for the whole app. |
 | `mode.ts` | `dataMode()`: `"live"` or `"mock"` (below). |
 | `mock/index.ts` | The in-memory `orb dev` for mock mode. |
+| `db.ts` | The Table Editor's shapes (`Schema`, `Table`, `Column`, `TableDetail`, `RowPage`, `Change`, `ColumnSpec`, `DDLResponse`…, matching `cli/internal/pgmeta`) and hooks: `useSchemas`, `useTables`, `useTableDetail`, `useTypes`, `useRows`, `useInsertRow`, `useUpdateRow`, `useDeleteRows`, `importRows`, `planDDL`, `applyDDL`, `waitForMigrations`. |
+| `mock/db.ts` | The in-memory PostgreSQL behind `/_portal/api/db/*` in mock mode (below). |
 
 ### Live state: how a change reaches the page
 
@@ -199,6 +203,49 @@ handling is exercised too.
 The public demo builds with `NEXT_PUBLIC_DEVTOOLS_DATA=mock`
 (`apps/devtools/vercel.json`).
 
+## The Table Editor (`/database/tables`)
+
+Supabase Studio's table editor, on gorbital's theme: every relation of the
+app's database in a sidebar, one table's rows in an editable grid, schema
+changes as migrations. The backend is `cli/internal/portal/db.go` over
+`cli/internal/pgmeta` (ADR-0067); the endpoints are listed in
+`docs/guides/dev-portal.md` ("db/" rows).
+
+```
+app/database/tables/page.tsx      <Suspense> around the client component (the selection is in the query string)
+components/table-editor/
+├── table-editor.tsx              the page: URL state, the queries, and every sheet and dialog wired together
+├── sidebar.tsx                   schema dropdown (system schemas behind a switch), search, relations with kind icon and ownership badge
+├── grid.tsx                      the grid: sticky header (type badge, pk/fk/unique icons, column menu), selection, inline editing, arrows/Enter/Esc
+├── value-input.tsx               one typed control per column kind: bool, enum, json (validated), date/time, arrays, NULL and "default" as states
+├── filter-bar.tsx                filter and sort chips with their popovers
+├── footer.tsx                    Data/Definition toggle, pages, page size, "N rows" (~ when estimated)
+├── definition.tsx                columns, constraints, indexes, triggers, and a reconstructed CREATE TABLE
+├── row-sheet.tsx                 insert, duplicate, edit a whole row
+├── column-form.tsx, type-picker.tsx, fk-picker.tsx   the column fields shared by the sheets
+├── table-sheet.tsx               new table: columns, unique constraints, foreign keys → create_table (+ comment)
+├── column-sheet.tsx              add a column, or edit one → alter_column (+ add_check, + rename_column)
+├── ddl-dialog.tsx                one-off changes from a menu: drop column, add foreign key, unique, primary key, rename/drop table
+├── plan-preview.tsx              usePlanFlow / PlanBody / PlanActions: the Preview → Apply flow every schema change goes through
+├── import-sheet.tsx              CSV import (papaparse): header row, mapping, empty→NULL, batches of 500, stops at the first refusal
+├── export.ts                     CSV/JSON export of the current filters, paging rows/query by 1000
+└── common.tsx, popover.tsx       icons, badges, banners, ProblemNote; a Radix popover dressed like the menus
+lib/table-editor/
+├── url.ts                        filters, sorts, page, limit and view ↔ the query string (`filter=col:op:value`, `sort=col:desc`)
+├── literals.ts                   cell literal ↔ editor value: booleans, arrays, JSON, timestamps
+├── csv.ts                        mapping, batching, the import runner, CSV/JSON writers
+├── plan.ts                       ColumnForm/TableForm → ColumnSpec and Change (only what changed for an edit)
+└── definition.ts                 CREATE TABLE from a TableDetail
+```
+
+**Data flow.** The selection lives in the URL (`?schema=&table=&filter=…&sort=…&page=&limit=&view=`), so `useSearchParams` under `Suspense` is the only state the page owns; the sidebar and the header menus navigate, everything else derives from `useTableDetail` (the catalog: ownership, kind, primary key, constraints) and `useRows` (`POST rows/query`, one page at a time, the previous page kept on screen while the next loads). A cell edit calls `rows/update` with the row's primary key and one value, then writes the returned row into the page's query data; inserts, deletes and imports invalidate the table's queries. Tables without a primary key, views, foreign tables and `system` tables are read-only (a banner says why); `managed` tables show the framework's warning and need the "allow edits" checkbox before a row can change.
+
+**Literal as text.** Every cell is the PostgreSQL text literal, in and out (`t`/`f`, `{a,"b c"}`, `2026-09-16 18:00:56.718279+00`, `{"a": 1}`, `\x00ff`), or `null`. The UI never parses a value it doesn't have to: `literals.ts` turns a literal into what a typed editor holds (a boolean, a list, a datetime-local string in UTC, pretty JSON) and back, and anything else stays text for PostgreSQL to parse. Invalid input comes back as a 422 `invalid_input` with the server's own message, shown where the edit happened.
+
+**Migration-plan flow.** A schema change never runs directly. The form builds a `Change` (`lib/table-editor/plan.ts`); Preview posts it to `ddl/plan` and shows the Up and Down SQL, the notes, an "irreversible" badge and the migration file's path; Apply posts the same body to `ddl/apply` (with `allow_dirty` when the checkbox is on), which writes `db/migrations/<version>_<name>.sql` and queues `migrate`. The client then polls `/_portal/app/_dev/migrations` until `current` moved past what it read before the apply and `pending` is 0 (up to 15 s), drops every `db` query, and the sheet closes or selects the new table. Editing a column may need several migrations (alter, add_check, rename); they are planned and applied in order, and a failure keeps what was applied. Managed and system tables are refused by the portal (403 `system_table`); a dirty git tree is refused unless allowed, and the error is shown with a hint to tick the checkbox.
+
+**Mock mode.** `lib/api/mock/db.ts` is a small PostgreSQL in memory: schemas `public` and `auth`, tables `projects` (an enum, a `text[]`, a `jsonb`, a numeric), `tasks` (an identity key, a boolean, a date, a foreign key to projects), `auth_users` and `audit_events` (managed), `auth.sessions`, `notes` (no primary key), `river_job` (system), the view `active_projects`, and `pg_catalog.pg_class` behind the system switch. It answers every `db/*` endpoint: filters with all ten operators, sorts with nulls first/last, pages and counts, inserts with defaults and identity values, updates, deletes, all-or-nothing imports, and `ddl/plan` with SQL rendered like pgmeta's; `ddl/apply` refuses without `allow_dirty` (the sample repository has an uncommitted migration), then changes the catalog in memory so the demo shows the new column or table.
+
 ## Primitives (`packages/ui/components`)
 
 Everything is styled with the theme's tokens only: 12–13 px text, mono
@@ -220,6 +267,7 @@ labels, `border-border`/`bg-elevated`/`text-dim`, `rounded-lg`, lime
 | `toast.tsx` | `Toaster`, `toast` | sonner, themed; `toast.success/error/…` from anywhere |
 | `command.tsx` | `CommandPalette`, `CommandItem` | cmdk on ⌘K; items navigate (`href`) or run (`onSelect`); renders the search box that opens it |
 | `spinner.tsx` | `Spinner`, `Skeleton`, `SkeletonLines` | |
+| (devtools) `table-editor/popover.tsx` | `Popover` | Radix popover with the menu's look; lives in the app until another page needs it |
 | `shell.tsx` | `Shell`, `AppChip`, `SearchButton` | `appChip` and `search` props take client components; `version` is a `ReactNode` |
 | `nav.tsx` | `Nav` | `tone: "live"` renders a pulsing dot |
 

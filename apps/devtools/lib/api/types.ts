@@ -51,6 +51,8 @@ export type PortalInfo = {
   version: string;
   ui: "bundled" | "placeholder";
   started_at: string;
+  /** The portal can reach the app's database (the Table Editor and Schema pages work). */
+  database: boolean;
 };
 
 export type Project = {

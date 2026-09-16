@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Boxes, Database, FileKey2, FolderOpen, KeyRound, LayoutDashboard, ListOrdered, Mail, Play, RotateCw, Route, ScrollText, ShieldCheck, SlidersHorizontal, Square, Zap } from "lucide-react";
+import { Activity, Boxes, Database, FileKey2, FolderOpen, GitBranch, KeyRound, LayoutDashboard, ListOrdered, Mail, Play, RotateCw, Route, ScrollText, ShieldCheck, SlidersHorizontal, Square, Zap } from "lucide-react";
 import { CommandPalette, type CommandItem } from "@gorbital/dash/components/command";
 import { useAppAction, useCapabilities, useDevRoutes } from "@/lib/api/queries";
 
@@ -21,6 +21,7 @@ const pages: CommandItem[] = [
   { id: "page:auth", label: "Authentication", hint: "/auth", href: "/auth", icon: <KeyRound size={13} />, group: "Pages", keywords: ["users", "accounts", "sessions", "providers", "rate limits"] },
   { id: "page:database", label: "Database", hint: "/database", href: "/database", icon: <Database size={13} />, group: "Pages" },
   { id: "page:storage", label: "Storage", hint: "/storage", href: "/storage", icon: <FolderOpen size={13} />, group: "Pages", keywords: ["files", "bucket", "objects", "upload", "signed url", "s3"] },
+  { id: "page:git", label: "Git", hint: "/git", href: "/git", icon: <GitBranch size={13} />, group: "Pages", keywords: ["commit", "branch", "diff", "stage", "push", "pull", "merge", "history", "log"] },
 ];
 
 /** The ⌘K palette with the pages, the app's live routes, and the app actions the portal offers. */

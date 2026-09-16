@@ -16,6 +16,7 @@ apps/devtools
 │   ├── page.tsx            Overview
 │   ├── database/sql/       SQL Editor, in a Suspense boundary for ?snippet=
 │   ├── observability/      Observability, in a Suspense boundary for ?tab= (Phase 8, below)
+│   ├── git/                Git, in a Suspense boundary for ?tab=, ?path= and ?staged= (Phase 11, below)
 │   └── routes|requests|logs|modules|audit|jobs|mail|settings|environment|database|auth
 ├── components/
 │   ├── overview/           Overview (with the health panel), OutputConsole, ConnectionProblem
@@ -36,6 +37,7 @@ apps/devtools
 │   ├── db-objects/         the Objects tabs and the plan dialog (Phase 4)
 │   ├── migrations/         the Migrations page (Phase 4)
 │   ├── observability/      the Observability screen (Phase 8, below)
+│   ├── git/                the Git screen (Phase 11, below): status header, changes and the diff viewer, branches, merge, history
 │   ├── app-chip.tsx        the shell's app chip, live
 │   ├── portal-version.tsx  the shell's version, live
 │   ├── search.tsx          the ⌘K palette: pages, the app's live routes, app actions
@@ -53,6 +55,7 @@ apps/devtools
     ├── sql-editor/         the SQL Editor's pure logic: exports, plan tree, name rules, run requests, drafts
     ├── observability/      the Observability screen's pure logic: formatting, grading, route ranking, share bars, sample series
     ├── storage/            the Storage screen's pure logic: keys and prefixes, listings, sizes and kinds, upload progress, the guard
+    ├── git/                the Git screen's pure logic: the unified-diff parser and hunk patches, the graph lanes, branch names, messages, relative time
     └── api/                the data layer (below)
 ```
 
@@ -96,6 +99,8 @@ serves `out/` at `http://127.0.0.1:3100` and resolves `/routes` to
 | `../logs/filters.ts` | `LogFilters` and the URL codec (`parseFilters`, `filtersToParams`, `filtersToApi`, `resolveRange`, `bucketFor`), `../logs/tail.ts` the tail reducer, `../logs/fingerprint.ts` the error grouping mirrored from Go. |
 | `observability.ts` | The Observability screen's types and hooks (Phase 8, below). |
 | `mock/observability.ts` | The health table, the sampler, the pgmeta statistics and `/ops/observability/*` in mock mode. |
+| `git.ts` | The Git screen's types (`GitStatus`, `GitFile`, `GitDiff`, `GitCommit`, `GitBranch`, `GitRemoteResult`, `GitMergePreview`, matching `cli/internal/portal/git.go`) and hooks (Phase 11, below). |
+| `mock/git.ts` | The repository in memory behind `/_portal/api/git/*` in mock mode. |
 
 ### Live state: how a change reaches the page
 
@@ -1164,6 +1169,111 @@ switchable from the driver card in mock mode and remembered in
 (`local: false`, for the guard); `off` answers 404 `storage_off`
 everywhere. `opsProxy` hands `/ops/storage` paths here before it parses a
 JSON body, because an upload's body is the file; `resetMock` resets it.
+
+## Git (`/git`)
+
+Phase 11 (roadmap items 77–81, [ADR-0076](../../gorbital/docs/adr/0076-git-screen.md),
+the [git guide](../../gorbital/docs/guides/git.md)): the app's repository
+through the developer's own `git`, which `orb dev` runs in the app directory
+and serves under `/_portal/api/git/` (`cli/internal/portal/git.go`). Nothing
+here needs the app to run: the screen reads the portal only. Everything new
+lives in new files; the shared code gained one dispatch line in
+`lib/api/mock/index.ts`, the nav entry under Bench (Migrations moved to its
+own icon) and the palette entry.
+
+```
+app/git/page.tsx                  <Suspense> around the client component (?tab=changes|branches|history, ?path=, ?staged=)
+components/git/
+├── git.tsx                       the page: URL state, the status query, the not-a-repository gate, the header, the Conflicts panel, the tabs
+├── status-header.tsx             item 77: branch (or detached), upstream, ↑ ahead ↓ behind, the operation in progress, counts, HEAD;
+│                                 Fetch / Pull / Push and RemoteResultSheet (git's output, a refusal in red, a pull's conflicts with Open in editor)
+├── changes.tsx                   item 78: the Staged and Changes lists (status letters as badges, renames as old → new, hover actions),
+│                                 Stage all / Unstage all, the CommitBox (subject + body, Enter or ⌘⏎), the DiscardDialog
+├── diff-viewer.tsx               the parsed unified diff: old/new numbers, added/removed colours, Stage hunk / Unstage hunk per hunk,
+│                                 Stage/Unstage file, Discard, Open; notes for untracked, binary and conflicted files; Copy diff
+├── branches.tsx                  item 79: local branches (current, upstream, ahead/behind, merged, last commit), remote names,
+│                                 NewBranchDialog (name validated, from, checkout), Switch, DeleteBranchDialog
+├── merge.tsx                     item 80: MergeSheet (the preview, then Merge and git's output) and ConflictsPanel (Open in editor,
+│                                 Mark resolved, Abort merge behind a ConfirmDialog)
+├── history.tsx                   item 81: the log with the lane graph (one SVG), refs as chips, author, relative time, the commit sheet, Load more
+└── common.tsx                    StatusLetter, RefChip, Hash, CommitList, NoRepository
+lib/api/git.ts                    the types and hooks (below)
+lib/api/mock/git.ts               the mock repository (below)
+lib/git/
+├── diff.ts                       parseUnifiedDiff (files → hunks → lines with oldNo/newNo; binary, renamed, created, deleted),
+│                                 hunkPatch(file, hunk), hunkPatchReversed, diffStat, describeStat
+├── graph.ts                      assignLanes(commits) → rows with a lane, a colour and the edges to the next row; graphWidth
+├── branch.ts                     validBranchName (the backend's pattern and rules), branchNameError, localName
+├── status.ts                     splitFiles (the two lists), describeLetter, letterTone, describeState, describeCounts
+├── message.ts                    joinMessage, splitMessage, shortSubject
+└── time.ts                       relativeTime ("5 minutes ago", "yesterday", "3 weeks ago")
+```
+
+| Endpoint | Hook | Notes |
+|---|---|---|
+| `GET git/status` | `useGitStatus` | every 5 s while the tab is visible; every mutation writes the status it gets back into the query and invalidates `["git"]` |
+| `GET git/diff?path=&staged=` | `useGitDiff(path, staged)` | the working tree against the index, or the index against HEAD |
+| `POST git/stage`, `unstage`, `discard` (`{paths}`) | `useGitPaths("stage" \| "unstage" \| "discard")` | answer the new status |
+| `POST git/patch` (`{patch, reverse}`) | `useGitPatch` | one hunk: the file header lines and that hunk, from `hunkPatch`; `reverse` unstages |
+| `POST git/commit` (`{message}`) | `useGitCommit` | `joinMessage(subject, body)`; answers the commit |
+| `GET git/branches`, `POST git/branches` (`{name, from, checkout}`), `POST git/switch`, `DELETE git/branches/{name}?force=` | `useGitBranches` (15 s), `useCreateBranch`, `useSwitchBranch`, `useDeleteBranch` | |
+| `GET git/unmerged?branch=` | `useUnmergedCommits` | what deleting a branch loses; the dialog offers "Delete anyway (force)" only when there are some |
+| `POST git/fetch`, `pull`, `push` | `useRemoteAction(action)` | no toasts: the sheet shows git's output or its refusal |
+| `GET git/merge/preview?branch=`, `POST git/merge`, `POST git/merge/abort`, `GET git/conflicts` | `useMergePreview`, `useGitMerge`, `useAbortMerge`, `useGitConflicts` | |
+| `GET git/log?all=&range=&path=&limit=&skip=` | `useGitLog({all, limit})` | infinite by `skip`; Load more while a page is full |
+| `POST git/open` (`{path, line}`, 204) | `useOpenInEditor` | the developer's editor |
+
+**Refusals.** git's own refusals come back as 409 `git_refused` with git's
+message in `detail`; the UI shows it verbatim (a toast, or the sheet's red
+box for fetch, pull, push and merge). 400 `invalid_git_request` covers paths
+that leave the repository and bad branch names, which the forms refuse first
+(`branchNameError` mirrors the backend's pattern). A 404 `not_a_repository`
+(or `no_git`) from the status replaces the page with `NoRepository` and the
+`git init` lines.
+
+**Staging by hunk.** The diff viewer parses the endpoint's `patch` with
+`parseUnifiedDiff`; each hunk's button posts `hunkPatch(file, hunk)`, the
+file's header lines (`diff --git`, `index`, `---`, `+++`, and the rename or
+mode lines) followed by that hunk, with `reverse: true` on the staged side.
+The backend runs `git apply --cached --recount --unidiff-zero`, so a hunk
+applied on its own needs no recounting. Untracked files (the whole file, from
+`git diff --no-index`), binary files and conflicts have no hunk buttons.
+Because the status polls, every write first cancels the in-flight status
+query, so a poll started before the action never lands on top of its answer.
+When the status sees HEAD, the branch or the state move (a commit or a switch
+made in the terminal), the branches, the log and the diffs are invalidated.
+
+**What every destructive action says.** Discard: "This throws away N
+additions and M deletions in path" (both sides of the index; an untracked
+file: "deletes the untracked file, N lines"). Delete branch: the commits only
+on that branch, listed, before "Delete anyway (force)"; a merged branch gets
+a plain Delete. Abort merge: "drops the merge in progress; your commits
+stay". Merge: the preview names the fast-forward or merge commit, the
+commits, the files and the conflicts in red before the button.
+
+**The graph.** `assignLanes` walks the commits newest first: a commit takes
+the first lane waiting for its hash (or a new one), its first parent inherits
+the lane, other parents join the lane already waiting for them or open one;
+lanes that waited for the same commit close into it, and a first parent
+already waited for to the right is pulled left so the mainline stays in lane
+0. `history.tsx` draws one SVG beside the rows: a dot per commit (hollow for
+a merge), straight lines down a lane, curves where lanes join or fork, in the
+theme's series colours. The rows are 34 px, so the SVG and the list line up.
+
+**Mock mode.** `lib/api/mock/git.ts` is a repository in memory: `main` with
+`origin/main` ahead 1, six changed files (README.md with three unstaged
+hunks, `internal/app/server.go` with one staged and one unstaged hunk, a
+staged rename, a staged new migration, an untracked note, a binary logo),
+three other branches (`feature/webhooks` unmerged with two commits and a
+fast-forward preview, `fix/readme-typo` that conflicts on README.md,
+`release/1.0` merged, with a tag), and thirty commits over three branches
+with two merges. Every endpoint changes that state: hunks move between the
+index and the tree (the patch is matched by its lines), commits appear in the
+log and move `main`, push resets ahead (and sets the upstream of a new
+branch), a switch or a merge that would overwrite a locally changed file is
+refused with git's message, merging `fix/readme-typo` leaves README.md
+conflicted with `state: merging` until it is staged and committed or the
+merge is aborted. `resetMockGit` puts it back; `resetMock` calls it.
 
 ## What Phase 0 leaves for later
 

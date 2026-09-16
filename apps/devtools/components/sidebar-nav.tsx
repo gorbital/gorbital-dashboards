@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Boxes, Database, FileKey2, FolderOpen, GitBranch, KeyRound, LayoutDashboard, ListOrdered, Mail, Route, ScrollText, ShieldCheck, SlidersHorizontal, Table2, TerminalSquare, Waypoints, Zap } from "lucide-react";
+import { Activity, Boxes, Database, FileKey2, FolderOpen, GitBranch, GitCommitHorizontal, KeyRound, LayoutDashboard, ListOrdered, Mail, Route, ScrollText, ShieldCheck, SlidersHorizontal, Table2, TerminalSquare, Waypoints, Zap } from "lucide-react";
 import { Nav, type NavSection } from "@gorbital/dash/components/nav";
 import { Tooltip } from "@gorbital/dash/components/tooltip";
 import { isNoMailCatcher, useInbox } from "@/lib/api/mail";
@@ -42,6 +42,7 @@ export function SidebarNav() {
         { label: "Authentication", href: "/auth", icon: KeyRound },
         { label: "Database", href: "/database", icon: Database, badge: pending > 0 ? `${pending} pending` : undefined, tone: pending > 0 ? "hot" : undefined },
         { label: "Storage", href: "/storage", icon: FolderOpen },
+        { label: "Git", href: "/git", icon: GitBranch },
       ],
     },
   ];
@@ -53,7 +54,7 @@ export function SidebarNav() {
         { label: "SQL Editor", href: "/database/sql", icon: TerminalSquare },
         { label: "Schema", href: "/database/schema", icon: Waypoints },
         { label: "Objects", href: "/database/objects", icon: Boxes },
-        { label: "Migrations", href: "/database/migrations", icon: GitBranch },
+        { label: "Migrations", href: "/database/migrations", icon: GitCommitHorizontal },
       ],
     });
   }
@@ -72,7 +73,7 @@ function NoDatabaseSection() {
     { label: "SQL Editor", icon: TerminalSquare },
     { label: "Schema", icon: Waypoints },
     { label: "Objects", icon: Boxes },
-    { label: "Migrations", icon: GitBranch },
+    { label: "Migrations", icon: GitCommitHorizontal },
   ];
   return (
     <div className="flex flex-col gap-0.5">

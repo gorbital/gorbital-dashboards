@@ -137,7 +137,12 @@ conflicts, reset and history; feature flags with enabled, default, rollout
 percentage and targets, reasons, versions and history), Environment (`.env`
 against `.env.example`: descriptions, secrets masked until revealed, missing
 keys flagged, add, edit and delete in place, a restart offered after a
-change, which keys the running app read), Authentication
+change, which keys the running app read), Git (the app's
+repository through your own git: status with ahead/behind, the changed files
+with stage and unstage per file and per hunk in a diff viewer, commit, branches
+with create, switch and delete, fetch, pull and push, a merge preview then
+merge, conflicts opened in the editor, the log with a graph; every destructive
+action confirmed with what it loses), Authentication
 (accounts with search and paging; an account's sessions, passkeys, linked
 providers, second factors and pending codes; create, verify, ban, delete,
 roles, end sessions, enroll or reset MFA, act as a user in the Routes

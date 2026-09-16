@@ -57,6 +57,7 @@ import type {
 } from "../types";
 import { mockAuthFetch, resetMockAuth } from "./auth";
 import { mockDbFetch } from "./db";
+import { mockGitFetch, resetMockGit } from "./git";
 import { mockLogsFetch, resetMockLogs } from "./logs";
 import { mockObservabilityFetch, resetObservabilityMock } from "./observability";
 import { mockEnvFetch, resetMockEnv } from "./env";
@@ -194,6 +195,7 @@ export function resetMock() {
   resetMockEnv();
   resetMockFlags();
   resetMockStorage();
+  resetMockGit();
 }
 
 /* ---------- Responses ---------- */
@@ -399,6 +401,7 @@ export async function mockFetch(input: string, init: RequestInit = {}): Promise<
   if (p === "/_portal/api/env" || p.startsWith("/_portal/api/env/")) return mockEnvFetch(url, method, init); // the env editor (mock/env.ts)
   if (p.startsWith("/_portal/api/db/sql/")) return mockSqlFetch(p, method, init) ?? problemResponse(problem(404, "not_found", `no portal endpoint ${method} ${p}`));
   if (p.startsWith("/_portal/api/db/")) return mockDbFetch(url, method, init);
+  if (p.startsWith("/_portal/api/git/")) return mockGitFetch(url, method, init) ?? problemResponse(problem(404, "not_found", `no portal endpoint ${method} ${p}`)); // the repository (mock/git.ts)
   if (p.startsWith("/_portal/app/")) return appProxy(p.slice("/_portal/app".length), url.searchParams, method, init);
   return problemResponse(problem(404, "not_found", `no portal endpoint ${method} ${p}`));
 }

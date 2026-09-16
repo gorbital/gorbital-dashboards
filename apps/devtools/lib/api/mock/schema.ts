@@ -733,7 +733,7 @@ export async function mockDb(url: URL, method: string, init: RequestInit, app: A
       const d = detail(decodeURIComponent(t[1]), decodeURIComponent(t[2]));
       return d ? json(d) : problem(404, "not_found", `no table ${t[1]}.${t[2]}`);
     }
-    return problem(404, "not_found", `no portal endpoint GET ${p}`);
+    return undefined; // the SQL editor's and the Table Editor's reads (mock/sql.ts, mock/db.ts) come next
   }
 
   const ddl = /^ddl\/(plan|apply)$/.exec(rest);
@@ -758,5 +758,5 @@ export async function mockDb(url: URL, method: string, init: RequestInit, app: A
     void runMigrate("up");
     return json({ plan, file, applied: true } satisfies DdlResponse);
   }
-  return problem(404, "not_found", `no portal endpoint ${method} ${p}`);
+  return undefined; // the SQL editor's and the Table Editor's writes (mock/sql.ts, mock/db.ts) come next
 }

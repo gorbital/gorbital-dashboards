@@ -116,7 +116,10 @@ that zooms; a live tail; a record's detail with the rest of its request;
 saved filters; errors grouped by fingerprint; the store's size and Clear),
 Modules (what the running app wired:
 libraries, API modules with route counts, jobs, settings, flags and
-permission catalogs), Audit (the app's audit log with filters, stats and
+permission catalogs), Observability (service health, the API's rates and
+percentiles per route, PostgreSQL's connections, cache, sizes and locks,
+`pg_stat_statements` with Explain and Reset, index advice, the machine and
+the Go runtime, jobs and sign-ins), Audit (the app's audit log with filters, stats and
 cursor pagination), Jobs (definitions with the schedule in plain English, an
 active toggle, Run now, edit and reset; a new job by form, CLI command or
 code through `orb gen job` with a diff preview and a restart; form-made jobs

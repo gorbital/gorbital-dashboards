@@ -1,6 +1,6 @@
 "use client";
 
-import { Boxes, Database, GitBranch, KeyRound, LayoutDashboard, ListOrdered, Mail, Route, ScrollText, ShieldCheck, SlidersHorizontal, Table2, TerminalSquare, Waypoints, Zap } from "lucide-react";
+import { Activity, Boxes, Database, GitBranch, KeyRound, LayoutDashboard, ListOrdered, Mail, Route, ScrollText, ShieldCheck, SlidersHorizontal, Table2, TerminalSquare, Waypoints, Zap } from "lucide-react";
 import { Nav, type NavSection } from "@gorbital/dash/components/nav";
 import { Tooltip } from "@gorbital/dash/components/tooltip";
 import { useCapabilities, useDevMail, useDevMigrations, useDevRoutes } from "@/lib/api/queries";
@@ -26,6 +26,7 @@ export function SidebarNav() {
         { label: "Logs", href: "/logs", icon: ScrollText },
         { label: "Modules", href: "/modules", icon: Boxes },
         { label: "Audit", href: "/audit", icon: ShieldCheck },
+        { label: "Observability", href: "/observability", icon: Activity },
       ],
     },
     {

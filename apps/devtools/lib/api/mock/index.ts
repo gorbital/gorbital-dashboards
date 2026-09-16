@@ -58,6 +58,7 @@ import type {
 import { mockAuthFetch, resetMockAuth } from "./auth";
 import { mockDbFetch } from "./db";
 import { mockLogsFetch, resetMockLogs } from "./logs";
+import { mockObservabilityFetch, resetObservabilityMock } from "./observability";
 import { mockSqlFetch } from "./sql";
 import { mockDb } from "./schema";
 
@@ -184,6 +185,7 @@ export function resetMock() {
   testEmails = 0;
   resetMockAuth();
   resetMockLogs();
+  resetObservabilityMock();
 }
 
 /* ---------- Responses ---------- */
@@ -341,6 +343,8 @@ export async function mockFetch(input: string, init: RequestInit = {}): Promise<
   const p = url.pathname;
   // The catalog mock answers migrate too; the Phase 1 state (pending count in /ops/system) follows along.
   if (p === "/_portal/api/app/migrate" && method === "POST") void migrate();
+  const observability = mockObservabilityFetch(url, method, init, app, () => app.state === "running");
+  if (observability) return observability; // health, the machine, db/stats, db/statements, db/advice and /ops/observability/* (mock/observability.ts)
   const db = await mockDb(url, method, init, app);
   if (db) return db; // the database, migrate and migration-generator endpoints (mock/schema.ts)
   if (p === "/_portal/api/status") return json({ ...portalStatus, app } satisfies Status);

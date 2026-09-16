@@ -9,6 +9,7 @@ export * from "./panel";
 export * from "./table";
 export * from "./table-sort";
 export * from "./progress";
+export * from "./gauge";
 export * from "./button";
 export * from "./code";
 export * from "./input";

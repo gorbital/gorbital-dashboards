@@ -15,6 +15,7 @@ apps/devtools
 │   ├── layout.tsx          fonts, the Shell, the DevtoolsProvider around everything
 │   ├── page.tsx            Overview
 │   ├── database/sql/       SQL Editor, in a Suspense boundary for ?snippet=
+│   ├── observability/      Observability, in a Suspense boundary for ?tab= (Phase 8, below)
 │   └── routes|requests|logs|modules|audit|jobs|mail|settings|database|auth
 ├── components/
 │   ├── overview/           Overview (with the health panel), OutputConsole, ConnectionProblem
@@ -30,6 +31,7 @@ apps/devtools
 │   ├── schema/             the diagram (Phase 4)
 │   ├── db-objects/         the Objects tabs and the plan dialog (Phase 4)
 │   ├── migrations/         the Migrations page (Phase 4)
+│   ├── observability/      the Observability screen (Phase 8, below)
 │   ├── app-chip.tsx        the shell's app chip, live
 │   ├── portal-version.tsx  the shell's version, live
 │   ├── search.tsx          the ⌘K palette: pages, the app's live routes, app actions
@@ -42,6 +44,7 @@ apps/devtools
     ├── table-editor/       the Table Editor's pure logic: URL state, literals, CSV, plan builders
     ├── jobs/               the Jobs screen's pure logic: schedule → English, the line diff, the New job form
     ├── sql-editor/         the SQL Editor's pure logic: exports, plan tree, name rules, run requests, drafts
+    ├── observability/      the Observability screen's pure logic: formatting, grading, route ranking, share bars, sample series
     └── api/                the data layer (below)
 ```
 
@@ -75,6 +78,8 @@ serves `out/` at `http://127.0.0.1:3100` and resolves `/routes` to
 | `logs.ts` | The log store's shapes (`LogRecord`, `LogPage`, `LogBucket`, `ErrorGroup`, `LogStats`, `SavedFilter`, matching `cli/internal/portal/logstore.go`) and hooks: `useLogs` (infinite, paging backwards by `next_before`), `useLogHistogram`, `useLogErrors`, `useRequestLogs`, `useLogStats`, `useSavedFilters`, `useSaveFilter`, `useDeleteFilter`, `useClearLogs`, `useLogTail` (the live tail on `logs/stream`), `isNoLogStore` (Phase 7, below). |
 | `mock/logs.ts` | The in-memory log store behind `/_portal/api/logs*` in mock mode. |
 | `../logs/filters.ts` | `LogFilters` and the URL codec (`parseFilters`, `filtersToParams`, `filtersToApi`, `resolveRange`, `bucketFor`), `../logs/tail.ts` the tail reducer, `../logs/fingerprint.ts` the error grouping mirrored from Go. |
+| `observability.ts` | The Observability screen's types and hooks (Phase 8, below). |
+| `mock/observability.ts` | The health table, the sampler, the pgmeta statistics and `/ops/observability/*` in mock mode. |
 
 ### Live state: how a change reaches the page
 
@@ -419,6 +424,7 @@ labels, `border-border`/`bg-elevated`/`text-dim`, `rounded-lg`, lime
 | `sheet.tsx` | `Sheet` | right-side panel, 420/480/560 px |
 | `dropdown.tsx` | `Dropdown` | items with icon, shortcut, `danger`, `checked`, separators |
 | `tabs.tsx` | `Tabs`, `TabPanel` | underlined tabs with badges and right-side actions |
+| `gauge.tsx` | `Gauge` | a three-quarter arc with the value in the middle; inline SVG, theme tokens only |
 | `tooltip.tsx` | `Tooltip`, `TooltipProvider` | mount the provider once (the devtools provider does) |
 | `toast.tsx` | `Toaster`, `toast` | sonner, themed; `toast.success/error/…` from anywhere |
 | `command.tsx` | `CommandPalette`, `CommandItem` | cmdk on ⌘K; items navigate (`href`) or run (`onSelect`); renders the search box that opens it |
@@ -802,6 +808,90 @@ that first replays after the cursor, then adds an event every 2 s while
 someone listens; a query after a pause catches the store up first, so a
 refresh shows new records as a real one would. `resetMockLogs` puts it
 back; `resetMock` calls it.
+
+## Observability (`/observability`)
+
+Phase 8 (ADR-0073): service health, the API's rates and percentiles, the
+database's statistics, query performance, advice, the machine and the Go
+runtime, jobs and sign-ins. The backend is `cli/internal/portal/observe.go`
+(the health table, the `gopsutil` sampler in `sysinfo.go`) and
+`cli/internal/pgmeta/stats.go` (`Stats`, `Statements`, `ResetStatements`,
+`Advise`), plus what the app already answers: `/ops/observability/*`,
+`/ops/system`, `/ops/jobs/overview` and `/ops/audit`. Everything new lives
+in new files; the shared code gained one dispatch line in
+`lib/api/mock/index.ts`, the nav and palette entries, and `Gauge` in
+`packages/ui/components/gauge.tsx`.
+
+```
+app/observability/page.tsx        <Suspense> around the client component (the section is in ?tab=)
+components/observability/
+├── observability.tsx             the tabs; renders a skeleton until mounted (the boundary may hydrate after the status query answered)
+├── health.tsx                    item 63: the service table and the app's readiness checks
+├── api.tsx                       item 64: rates, percentiles, the minutes chart, top-5 cards, the routes table, the stream badge
+├── db.tsx                        item 65: connections, clients, cache gauges, pool, transactions, largest tables, lock waits, long statements
+├── queries.tsx                   item 66: pg_stat_statements with share bars, Explain (dialog), Open in SQL editor, Reset; the "unavailable" panel
+├── advice.tsx                    the four advice groups, each with Copy and Open in SQL editor
+├── system.tsx                    item 67: host gauges, memory and disk bars, the two process cards, the Go runtime, 60-sample sparklines
+├── jobs-auth.tsx                 item 68: queues from /ops/jobs/overview, auth.* events by action, sign-ins by method
+└── common.tsx                    StatusPill, HitGauge, useOpenInSqlEditor, NoDatabase, Stat
+lib/api/observability.ts          types (ServiceHealth, HostSample, DatabaseStats, Statements, Advice, ObservabilityOverview, RouteTraffic…) and hooks
+lib/api/mock/observability.ts     the mock: health, the sampler, db/stats, db/statements (+ reset), db/advice, /ops/observability/{overview,routes,stream}
+lib/observability/                pure helpers with tests: format (percent, bytes, millis, rate, count), grade (hit, usage, error-rate, load, worst status),
+                                  routes (sort, slowest, most failing, fillMinutes), statements (share bars, editor text), samples (the 60-sample series)
+```
+
+| Endpoint | Hook | Polling |
+|---|---|---|
+| `GET /_portal/api/health` | `useServiceHealth` | 10 s |
+| `GET /_portal/api/system` (404 `no_system_sampler` on an older orb) | `useHostSample` | 2 s, only while the System tab is mounted |
+| `GET /_portal/api/db/stats` | `useDbStats` | 10 s |
+| `GET /_portal/api/db/statements?sort=&limit=` | `useDbStatements` | on demand; Refresh refetches (the counters only grow) |
+| `POST /_portal/api/db/statements/reset` (204; 409 `statements_unavailable`) | `useResetStatements` | after a `ConfirmDialog` |
+| `GET /_portal/api/db/advice` | `useDbAdvice` | on open, 30 s stale |
+| `GET /ops/observability/overview?window=` | `useObservabilityOverview` | 15 s |
+| `GET /ops/observability/routes?window=&sort=requests&limit=500` | `useObservabilityRoutes` | 15 s; the table sorts client-side |
+| `GET /ops/observability/stream?window=` | `useObservabilityStream` | `subscribeSSE`; every `overview` event is written into the overview query, so the tiles and the chart move every 5 s; subscribed only while the API tab is open |
+| `GET /ops/system`, `/ops/jobs/overview`, `/ops/audit/stats`, `/ops/audit` | the existing `useSystem` (2 s on the System tab), `useJobsOverview`, `useAuditStats("action", { action_prefix: "auth." })`, `useAudit({ action: "auth.login.succeeded" })` | as before |
+
+Each tab mounts its own hooks (Radix unmounts inactive tab content), so a
+tab polls only while it is open. The ranges are `15m`, `1h`, `6h` and `24h`,
+passed as the app's `window`; `fillMinutes` pads the overview's minutes
+(only minutes with requests come back) so the chart has one point per
+minute. The top-5 cards rank the routes list with `slowestRoutes` (by p95,
+routes with at least one request) and `mostFailingRoutes` (by error rate
+then server errors, routes without a 5xx don't appear), falling back to the
+overview's `top_routes` until the list arrives.
+
+Hit ratios are graded by `hitGrade`: ≥ 0.99 good, ≥ 0.95 ok, else poor; CPU,
+memory, disk and connections by `usageGrade` (≥ 90 poor, ≥ 70 ok). The
+Database tab links every table and every advice row to the Table Editor
+(`/database/tables?schema=&table=`). Explain posts the statement's
+normalised text to the SQL editor's `db/sql/explain` (a generic plan where
+`$n` placeholders remain) and shows it with Phase 3's `ExplainView`; "Open
+in SQL editor" writes the text into the editor's draft (`saveDraft`, read-only
+mode) and navigates to `/database/sql`. When `db/statements` answers
+`available: false` the tab shows the `reason` and the compose line to add
+instead of the table. Sign-ins by method group the last 100
+`auth.login.succeeded` events by `metadata.method` (a social provider), else
+`mfa_method` (password plus a second factor), else password, because
+`/ops/audit/stats` groups by action only.
+
+The System tab keeps the last 60 samples of CPU, the app's CPU and RSS,
+memory, goroutines and heap client-side (`addSample`, skipping a sample with
+the same `sampled_at` when the poll outran the sampler) for the sparklines.
+
+### Mock
+
+`lib/api/mock/observability.ts` answers every portal endpoint and
+`/ops/observability/*`: five services (the app follows the supervisor's
+state; PostgreSQL degraded by two lock waits; Mailpit, MinIO and a stopped
+collector), a system sample that wanders on every call, `db/stats` with two
+sessions waiting on locks (with the blocking PIDs), a statement idle in
+transaction for a while and another running, twelve tables, 25 statements
+with the River fetch at 60% of the total time (sort and limit apply; Reset
+scales the counters down and lets them grow back over five minutes), advice
+in every category, and an overview per range with an `overview` event every
+5 s on the stream.
 
 ## What Phase 0 leaves for later
 

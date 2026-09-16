@@ -1,6 +1,6 @@
 "use client";
 
-import { Boxes, Database, KeyRound, LayoutDashboard, ListOrdered, Mail, Play, RotateCw, Route, ScrollText, ShieldCheck, SlidersHorizontal, Square, Zap } from "lucide-react";
+import { Activity, Boxes, Database, KeyRound, LayoutDashboard, ListOrdered, Mail, Play, RotateCw, Route, ScrollText, ShieldCheck, SlidersHorizontal, Square, Zap } from "lucide-react";
 import { CommandPalette, type CommandItem } from "@gorbital/dash/components/command";
 import { useAppAction, useCapabilities, useDevRoutes } from "@/lib/api/queries";
 
@@ -11,6 +11,7 @@ const pages: CommandItem[] = [
   { id: "page:logs", label: "Logs", hint: "/logs", href: "/logs", icon: <ScrollText size={13} />, group: "Pages" },
   { id: "page:modules", label: "Modules", hint: "/modules", href: "/modules", icon: <Boxes size={13} />, group: "Pages" },
   { id: "page:audit", label: "Audit", hint: "/audit", href: "/audit", icon: <ShieldCheck size={13} />, group: "Pages" },
+  { id: "page:observability", label: "Observability", hint: "/observability", href: "/observability", icon: <Activity size={13} />, group: "Pages", keywords: ["health", "latency", "p95", "database", "statements", "pg_stat_statements", "advice", "system", "cpu", "memory", "goroutines"] },
   { id: "page:jobs", label: "Jobs", hint: "/jobs", href: "/jobs", icon: <Zap size={13} />, group: "Pages" },
   { id: "page:mail", label: "Mail", hint: "/mail", href: "/mail", icon: <Mail size={13} />, group: "Pages" },
   { id: "page:settings", label: "Settings", hint: "/settings", href: "/settings", icon: <SlidersHorizontal size={13} />, group: "Pages" },

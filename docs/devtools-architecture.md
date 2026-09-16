@@ -16,13 +16,16 @@ apps/devtools
 │   ├── page.tsx            Overview
 │   ├── database/sql/       SQL Editor, in a Suspense boundary for ?snippet=
 │   ├── observability/      Observability, in a Suspense boundary for ?tab= (Phase 8, below)
-│   └── routes|requests|logs|modules|audit|jobs|mail|settings|database|auth
+│   └── routes|requests|logs|modules|audit|jobs|mail|settings|environment|database|auth
 ├── components/
 │   ├── overview/           Overview (with the health panel), OutputConsole, ConnectionProblem
 │   ├── routes/             the route list and the request builder
 │   ├── requests/           the live-tailed request list; its detail reads the log store
 │   ├── logs/               the Logs screen on the log store (Phase 7, below); logs/log-line.tsx is the expandable record both use
-│   ├── modules/, audit/, settings/, database/, mail/
+│   ├── modules/, audit/, database/
+│   ├── mail/               the Mail screen (Phase 9, below): the inbox orb dev caught, the previews, the delivery sections
+│   ├── environment/        the Environment screen (Phase 9, below): .env against .env.example
+│   ├── settings/           runtime settings, and the Feature flags tab (Phase 9, below)
 │   ├── auth/               the Authentication screen (Phase 5, below)
 │   ├── jobs/               the Jobs screen (Phase 6, below): the list, the New job sheet, the job detail, the plan diff
 │   ├── shared/             Gate, ProblemPanel, ReasonDialog, QueryParam, KeyValueEditor (below)
@@ -43,6 +46,9 @@ apps/devtools
     ├── use-now.ts          a ticking clock for uptimes and "ago"
     ├── table-editor/       the Table Editor's pure logic: URL state, literals, CSV, plan builders
     ├── jobs/               the Jobs screen's pure logic: schedule → English, the line diff, the New job form
+    ├── mail/               the Mail screen's pure logic: addresses, codes, sizes, the stream's merge, preview groups
+    ├── environment/        the Environment screen's pure logic: key names, masks, badges, grouping, filters
+    ├── flags/              the Flags tab's pure logic: a state in words, the form, what the app would refuse
     ├── sql-editor/         the SQL Editor's pure logic: exports, plan tree, name rules, run requests, drafts
     ├── observability/      the Observability screen's pure logic: formatting, grading, route ranking, share bars, sample series
     └── api/                the data layer (below)
@@ -77,6 +83,12 @@ serves `out/` at `http://127.0.0.1:3100` and resolves `/routes` to
 | `mock/sql.ts` | The in-memory SQL runner behind `/_portal/api/db/sql/*` in mock mode. |
 | `logs.ts` | The log store's shapes (`LogRecord`, `LogPage`, `LogBucket`, `ErrorGroup`, `LogStats`, `SavedFilter`, matching `cli/internal/portal/logstore.go`) and hooks: `useLogs` (infinite, paging backwards by `next_before`), `useLogHistogram`, `useLogErrors`, `useRequestLogs`, `useLogStats`, `useSavedFilters`, `useSaveFilter`, `useDeleteFilter`, `useClearLogs`, `useLogTail` (the live tail on `logs/stream`), `isNoLogStore` (Phase 7, below). |
 | `mock/logs.ts` | The in-memory log store behind `/_portal/api/logs*` in mock mode. |
+| `mail.ts` | The development inbox (ADR-0074): `MailSummary`, `MailDetail` (`MailAddress`, `MailLink`, `MailAttachment`, `MailEnvelope`), `MailList`, the previews (`MailPreview`, `MailPreviewMessage`, `MailPreviewSent`), matching `cli/internal/devmail/store.go` and the console's OpenAPI; hooks `useInbox(q)`, `useMailMessage`, `useMailHtml`, `useMailSource`, `useDeleteMail`, `useClearMail`, `useMailStream` (the `mail/stream` tail, folded into every cached list), `useMailPreviews`, `useMailPreview(name, to)`, `useSendPreview`, `waitForMessage`; `isNoMailCatcher` for the 404 (Phase 9, below). |
+| `mock/mail.ts` | The in-memory catcher and previews behind `/_portal/api/mail*` and `/_dev/mail/preview*` in mock mode. |
+| `env.ts` | The env editor (ADR-0074): `EnvEntry`, `EnvList`, `EnvReveal`, `EnvChange`, `EnvChangeResult` matching `cli/internal/portal/env.go`; `useEnv`, `revealEnv` (never cached), `useUpdateEnv` (`PUT env` with `set`/`unset`), `useDevConfig` (`/_dev/config`), `isNoEnvEditor`. |
+| `mock/env.ts` | An in-memory `.env` and `.env.example`, parsed and rewritten like orb dev, behind `/_portal/api/env*` in mock mode. |
+| `flags.ts` | Feature flags (ADR-0057): `OpsFlag`, `FlagState`, `FlagTargets`, `FlagChange` matching `examples/full-single/api/openapi.json`; `useFlags`, `useFlagHistory`, `useSetFlag`, `useResetFlag` (both leave `flag_reason_required`, `invalid_flag_state` and `flag_version_conflict` to the form). |
+| `mock/flags.ts` | The sample flags behind `/ops/flags*` in mock mode, with versions, the required reason and the library's state validation. |
 | `../logs/filters.ts` | `LogFilters` and the URL codec (`parseFilters`, `filtersToParams`, `filtersToApi`, `resolveRange`, `bucketFor`), `../logs/tail.ts` the tail reducer, `../logs/fingerprint.ts` the error grouping mirrored from Go. |
 | `observability.ts` | The Observability screen's types and hooks (Phase 8, below). |
 | `mock/observability.ts` | The health table, the sampler, the pgmeta statistics and `/ops/observability/*` in mock mode. |
@@ -892,6 +904,146 @@ with the River fetch at 60% of the total time (sort and limit apply; Reset
 scales the counters down and lets them grow back over five minutes), advice
 in every category, and an overview per range with an `overview` event every
 5 s on the stream.
+
+## Phase 9: Mail, Environment, flags
+
+Roadmap items 69–72, decided in ADR-0074 in the gorbital repository:
+orb dev catches the app's email itself (`cli/internal/devmail`, replacing
+Mailpit in `compose.yaml`), renders the app's email previews through the
+dev console, and edits `.env` in place; feature flags come from `/ops/flags`.
+
+### Mail (`/mail`)
+
+The inbox orb dev caught, the app's email previews, and the Phase 1
+delivery sections, as three tabs (`?tab=inbox|previews|delivery`); the
+selected message is `?id=`, the selected preview `?preview=`.
+
+```
+components/mail
+├── mail.tsx             the page: the tabs and the query-string state; the header's counts ("N caught at 127.0.0.1:1025")
+├── inbox.tsx            search (q, a beat after the last key), the list (unread bold, from → to, subject, code chips,
+│                        attachment count, snippet, time and size), the live stream, Clear all, and the detail beside it
+├── message-detail.tsx   one message: From/To/Cc/Reply-To, the codes bar with copy, the tabs HTML (sandboxed, light/dark),
+│                        Text, Source, Headers; the links (open, copy, "bench" for loopback hosts), attachments, envelope; Delete
+├── previews.tsx         the previews by category, one rendered for a recipient (HTML in a sandboxed srcdoc frame, text),
+│                        copy subject/text, Send to inbox
+├── delivery.tsx         the Phase 1 sections: /ops/mail, a test email, the suppression list
+└── mailpit-inbox.tsx    the Phase 1 list, shown when this orb dev runs no catcher but the app proxies Mailpit
+lib/mail/format.ts       displayAddress(es), formatCode ("483 920"), formatSize, subjectOf, matchesQuery, mergeMessage,
+                         groupPreviews / categoryLabel / previewTitle, linkHost
+```
+
+**The inbox is the portal's, not the app's.** `useInbox(q)` reads
+`GET /_portal/api/mail?q=&limit=100` (`messages` newest first, `total`
+matching the search, `count` in the store, `smtp_addr`, `max`); it needs
+orb dev, not the running app, so the list survives restarts and a stopped
+app. `useMailStream` follows `mail/stream` with `subscribeSSE`: every
+`message` event (a `MailSummary`) is folded into each cached list whose
+search it matches (`matchesQuery` mirrors the store's search, `mergeMessage`
+keeps newest first and the cap) and bumps the counts, so a caught email
+appears without a refetch; the list also refetches every 15 s as the
+fallback. Reading a message (`GET mail/{id}`) marks it read, as the store
+does. The detail's HTML tab fetches `mail/{id}/html` as text and renders
+it in an `<iframe sandbox srcdoc>` with the portal's CSP repeated as a
+`<meta>` (no scripts, an opaque origin, images and inline styles only):
+one code path in live and mock mode, and no frame navigation to an API
+path, which some browsers refuse. The light/dark toggle sets the frame's
+background and `color-scheme`, for messages that don't set their own.
+Source is `mail/{id}/source` as text, fetched when the tab opens. Delete
+(`DELETE mail/{id}`) and Clear all (`DELETE mail`) go through
+`ConfirmDialog` and update every cached list before the refetch.
+
+**No catcher.** A 404 `no_mail_catcher` (the app sends to Mailpit or a
+provider) shows the Phase 1 Mailpit list when the app serves the console,
+and otherwise a panel explaining `MAIL_DELIVERY=devmail`. The sidebar's
+Mail badge is the catcher's `count`, falling back to Mailpit's total.
+
+**Previews.** `GET /_dev/mail/previews` (through the proxy; needs the
+console) lists `{name, description, category}`; `groupPreviews` groups them
+by category in the app's order with a label (`auth_verification` → "Auth ·
+verification"). Selecting one calls `GET /_dev/mail/preview?name=&to=`
+(the "to" field re-renders on Enter or blur; `preview@example.com` by
+default). *Send to inbox* posts `/_dev/mail/preview/send?name=&to=` with
+the portal's mutation header (the console's one POST endpoint), then
+`waitForMessage` asks the inbox every 500 ms (up to 8 s) for a message
+newer than the send and the page switches to the Inbox tab with it
+selected. A 400 `invalid_address` is a warning toast.
+
+### Environment (`/environment`)
+
+`.env` against `.env.example`, edited in place by orb dev
+(`cli/internal/portal/env.go`), joined with what the running app read.
+
+```
+components/environment/environment.tsx   the page: the filters (All / Missing n / Secrets / Not in example), search (?q=),
+                                         Add key, the banner after a change, the table by prefix, the inline editor, delete
+lib/environment/env.ts                   keyNameError (^[A-Za-z_][A-Za-z0-9_]*$), valueError, maskValue / isMasked / shownValue,
+                                         readByApp, entryBadges, keyPrefix / groupEntries, filterEntries, missingCount
+```
+
+`GET /_portal/api/env` answers `{entries, file, example}`: every key of
+`.env.example` in its order, then the keys only `.env` has, each with
+`value` (masked by orb dev when `secret`), `set`, `example`, `in_example`,
+`missing`, `description` (the comment block above the key in the example)
+and `line`. The table groups rows by prefix (`APP`, `AUTH`, `GOOGLE`…) and
+shows the badges `missing from .env`, `not in .env.example`, `secret`,
+`empty` and `not read by the app` (the key isn't among `/_dev/config`'s
+variables; only while the console answers). *Reveal* calls
+`GET env/{key}` (never cached; the value stays in component state until
+*Hide* or the next save), *Copy* copies a shown value. The inline editor
+(pencil, or *Set a value* on a missing key, or *Use the example*) saves on
+Enter and cancels on Escape; a masked secret's editor starts empty, so the
+current value never reaches the field unrevealed. *Add key* validates the
+name as you type and refuses one the file already has. Delete asks first
+(`ConfirmDialog`) and sends `unset`. Every write is `PUT env` with
+`{set, unset}`; the answer's `entries` replace the cache and
+`restart_needed` is always true, so the page shows the banner "The app
+reads .env when it starts" with *Restart the app* (`POST app/restart`)
+and clears it when the status reports a new `started_at`; `app.problem`
+(a build or start failure, which names a refused variable) is shown under
+it with a link to the Overview. A 400 `invalid_env_change` is the error
+toast; a 404 `no_env_editor` (orb dev outside an app directory) is an
+empty state.
+
+### Feature flags (Settings → Feature flags)
+
+The Phase 1 Settings screen showed runtime settings only; `/ops/flags`
+was read nowhere but the Modules screen's catalog. The Settings page now
+has two tabs (`?tab=flags`, the selected flag in `?flag=`), and the Flags
+tab (`components/settings/flags.tsx`) follows the settings patterns: the
+table (state in words from `describeFlagState`: "off", "on for everyone",
+"25% rollout · 3 targets", the declared state under a modified one; the
+`modified`, `client` and `invalid` badges; `vN`), a sheet with the whole
+state as a form (`lib/flags/state.ts`: enabled, default, the percentage or
+empty for no rollout, users and organisations allow/deny one ID per line;
+`stateFromForm` refuses what the flags library would, an ID in both lists
+of a rule, a percentage outside 0–100, before sending), a required reason,
+*Save as vN+1* (`PUT /ops/flags/{key}` with `state`, `version`, `reason`),
+*Reset to declared* (`DELETE`, through `ReasonDialog`) and the history
+(`GET …/history`, old state → new state with the reason and the actor).
+422 `flag_reason_required` and `invalid_flag_state` land in the sheet;
+409 `flag_version_conflict` refetches and says so.
+
+### Mock
+
+`lib/api/mock/mail.ts` holds twelve messages the sample app would have
+sent (verification and reset codes, an invitation link, a sign-in notice,
+recovery codes with a text attachment, an invoice with a PDF and a CSV and
+a Cc, a text-only test message…), built the way the parser would build
+them (codes, links from `<a>` and the text, a snippet, headers, the
+envelope, a reconstructed source), and answers every endpoint with the
+store's codes (`message_not_found`); `mail/stream` is a `ReadableStream`
+that emits a `message` event when a preview or the test email is sent
+(`deliverMockMail`). The eleven previews render for the given recipient
+and refuse an unknown name (`preview_not_found`) or a bad address
+(`invalid_address`). `lib/api/mock/env.ts` parses and rewrites an
+in-memory `.env` and `.env.example` like orb dev (comments and order kept,
+a new key after its example comment, quoting, masking by name) and refuses
+bad names and multi-line values with `invalid_env_change`.
+`lib/api/mock/flags.ts` keeps four flags (one with a 25 % rollout, two
+organisations and a history) with versions, the required reason and the
+library's state validation. All three are registered with one dispatch
+line each in `mock/index.ts`; `resetMock` resets them.
 
 ## What Phase 0 leaves for later
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Boxes, Database, KeyRound, LayoutDashboard, ListOrdered, Mail, Play, RotateCw, Route, ScrollText, ShieldCheck, SlidersHorizontal, Square, Zap } from "lucide-react";
+import { Activity, Boxes, Database, FileKey2, KeyRound, LayoutDashboard, ListOrdered, Mail, Play, RotateCw, Route, ScrollText, ShieldCheck, SlidersHorizontal, Square, Zap } from "lucide-react";
 import { CommandPalette, type CommandItem } from "@gorbital/dash/components/command";
 import { useAppAction, useCapabilities, useDevRoutes } from "@/lib/api/queries";
 
@@ -13,8 +13,11 @@ const pages: CommandItem[] = [
   { id: "page:audit", label: "Audit", hint: "/audit", href: "/audit", icon: <ShieldCheck size={13} />, group: "Pages" },
   { id: "page:observability", label: "Observability", hint: "/observability", href: "/observability", icon: <Activity size={13} />, group: "Pages", keywords: ["health", "latency", "p95", "database", "statements", "pg_stat_statements", "advice", "system", "cpu", "memory", "goroutines"] },
   { id: "page:jobs", label: "Jobs", hint: "/jobs", href: "/jobs", icon: <Zap size={13} />, group: "Pages" },
-  { id: "page:mail", label: "Mail", hint: "/mail", href: "/mail", icon: <Mail size={13} />, group: "Pages" },
-  { id: "page:settings", label: "Settings", hint: "/settings", href: "/settings", icon: <SlidersHorizontal size={13} />, group: "Pages" },
+  { id: "page:mail", label: "Mail", hint: "/mail", href: "/mail", icon: <Mail size={13} />, group: "Pages", keywords: ["inbox", "email", "previews", "codes", "delivery", "suppressions"] },
+  { id: "page:mail-previews", label: "Email previews", hint: "/mail?tab=previews", href: "/mail?tab=previews", icon: <Mail size={13} />, group: "Pages", keywords: ["templates", "send to inbox"] },
+  { id: "page:settings", label: "Settings", hint: "/settings", href: "/settings", icon: <SlidersHorizontal size={13} />, group: "Pages", keywords: ["runtime settings"] },
+  { id: "page:flags", label: "Feature flags", hint: "/settings?tab=flags", href: "/settings?tab=flags", icon: <SlidersHorizontal size={13} />, group: "Pages", keywords: ["rollout", "percentage", "targets"] },
+  { id: "page:environment", label: "Environment", hint: "/environment", href: "/environment", icon: <FileKey2 size={13} />, group: "Pages", keywords: [".env", "env", "variables", "secrets", "configuration"] },
   { id: "page:auth", label: "Authentication", hint: "/auth", href: "/auth", icon: <KeyRound size={13} />, group: "Pages", keywords: ["users", "accounts", "sessions", "providers", "rate limits"] },
   { id: "page:database", label: "Database", hint: "/database", href: "/database", icon: <Database size={13} />, group: "Pages" },
 ];

@@ -46,14 +46,16 @@ localStorage.devtoolsData = "mock"   // or "live"; then reload
 ```
 
 Every Dev Portal page is live: the Overview, Routes, Requests, Logs,
-Modules, Mail and Database read the dev console (`/_portal/app/_dev/*`),
+Modules, Mail, Environment and Database read the dev console (`/_portal/app/_dev/*`),
 and Audit, Jobs, Settings, Mail, Authentication and Database read the app's ops API
 (`/_portal/app/ops/*`), where `orb dev` sends its console token and the app
 treats it as a development operator with every `/ops` permission. Mock mode
 answers all of those endpoints too, with the same versions, reasons and rate
 limits.
 The Table Editor and the SQL Editor read and change the database through
-the portal's own API (`/_portal/api/db/*`).
+the portal's own API (`/_portal/api/db/*`); the Mail inbox and the
+Environment editor are the portal's too (`/_portal/api/mail*`,
+`/_portal/api/env*`).
 
 ## Run
 
@@ -125,9 +127,17 @@ active toggle, Run now, edit and reset; a new job by form, CLI command or
 code through `orb gen job` with a diff preview and a restart; form-made jobs
 shown as a form again from their marker, or "Ejected" once edited; run
 history with per-run logs, retry and cancel; queues with depth, throughput,
-pause and resume; the scheduled list), Mail (the Mailpit inbox, the delivery configuration, a test
-email and the suppression list), Settings (runtime settings grouped, a typed
-editor with reasons and version conflicts, reset and history), Authentication
+pause and resume; the scheduled list), Mail (the inbox `orb dev` catches:
+search, live arrivals, HTML in a sandboxed frame, text, source and headers,
+verification codes and links with copy, attachments, delete and clear; the
+app's email previews rendered with sample data and sent to the inbox; the
+delivery configuration, a test email and the suppression list), Settings
+(runtime settings grouped, a typed editor with reasons and version
+conflicts, reset and history; feature flags with enabled, default, rollout
+percentage and targets, reasons, versions and history), Environment (`.env`
+against `.env.example`: descriptions, secrets masked until revealed, missing
+keys flagged, add, edit and delete in place, a restart offered after a
+change, which keys the running app read), Authentication
 (accounts with search and paging; an account's sessions, passkeys, linked
 providers, second factors and pending codes; create, verify, ban, delete,
 roles, end sessions, enroll or reset MFA, act as a user in the Routes

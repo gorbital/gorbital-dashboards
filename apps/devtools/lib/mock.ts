@@ -371,7 +371,8 @@ export const devConfig: DevConfigList = {
     { name: "APP_LOG_LEVEL", secret: false, set: true, value: "debug" },
     { name: "DATABASE_URL", secret: true, set: true },
     { name: "DEV_CONSOLE_TOKEN", secret: true, set: true },
-    { name: "MAIL_DELIVERY", secret: false, set: true, value: "mailpit" },
+    { name: "MAIL_DELIVERY", secret: false, set: true, value: "devmail" },
+    { name: "DEV_MAIL_SMTP_ADDR", secret: false, set: true, value: "127.0.0.1:1025" },
     { name: "MAILPIT_WEB_PORT", secret: false, set: true, value: "8025" },
     { name: "OTEL_EXPORTER_OTLP_ENDPOINT", secret: false, set: false },
     { name: "GITHUB_CLIENT_SECRET", secret: true, set: false },
@@ -630,7 +631,7 @@ export const opsSystem: SystemInfo = {
 /** GET /ops/mail. */
 export const opsMail: MailStatus = {
   provider: "smtp",
-  delivery: "mailpit",
+  delivery: "devmail",
   details: { host: "127.0.0.1", port: "1025", tls: "none", auth: "none" },
   from_name: "acme-api (dev)",
   from_email: "no-reply@acme.dev",

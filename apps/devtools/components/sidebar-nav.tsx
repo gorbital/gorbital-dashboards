@@ -1,16 +1,19 @@
 "use client";
 
-import { Activity, Boxes, Database, GitBranch, KeyRound, LayoutDashboard, ListOrdered, Mail, Route, ScrollText, ShieldCheck, SlidersHorizontal, Table2, TerminalSquare, Waypoints, Zap } from "lucide-react";
+import { Activity, Boxes, Database, FileKey2, GitBranch, KeyRound, LayoutDashboard, ListOrdered, Mail, Route, ScrollText, ShieldCheck, SlidersHorizontal, Table2, TerminalSquare, Waypoints, Zap } from "lucide-react";
 import { Nav, type NavSection } from "@gorbital/dash/components/nav";
 import { Tooltip } from "@gorbital/dash/components/tooltip";
+import { isNoMailCatcher, useInbox } from "@/lib/api/mail";
 import { useCapabilities, useDevMail, useDevMigrations, useDevRoutes } from "@/lib/api/queries";
 
-/** The nav; badges carry live counts where one request buys them: routes, captured mail, pending migrations. */
+/** The nav; badges carry live counts where one request buys them: routes, caught mail (orb dev's inbox, or Mailpit's without a catcher), pending migrations. */
 export function SidebarNav() {
   const { status, running, console, database } = useCapabilities();
   const routes = useDevRoutes(console);
   const migrations = useDevMigrations(console && database);
-  const mail = useDevMail(console);
+  const inbox = useInbox("", Boolean(status.data));
+  const mail = useDevMail(console && isNoMailCatcher(inbox.error));
+  const caught = inbox.data ? inbox.data.count : mail.data ? mail.data.total : undefined;
   const pending = migrations.data?.pending ?? 0;
   const noDatabase = status.data?.portal.database === false;
   const sections: NavSection[] = [
@@ -33,8 +36,9 @@ export function SidebarNav() {
       title: "Bench",
       items: [
         { label: "Jobs", href: "/jobs", icon: Zap },
-        { label: "Mail", href: "/mail", icon: Mail, badge: mail.data ? mail.data.total : undefined },
+        { label: "Mail", href: "/mail", icon: Mail, badge: caught },
         { label: "Settings", href: "/settings", icon: SlidersHorizontal },
+        { label: "Environment", href: "/environment", icon: FileKey2 },
         { label: "Authentication", href: "/auth", icon: KeyRound },
         { label: "Database", href: "/database", icon: Database, badge: pending > 0 ? `${pending} pending` : undefined, tone: pending > 0 ? "hot" : undefined },
       ],

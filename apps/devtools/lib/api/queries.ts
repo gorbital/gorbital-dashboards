@@ -529,13 +529,16 @@ export function useSendTestEmail() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: TestEmailBody) => apiFetch<TestEmailResponse>("/_portal/app/ops/mail/test", { method: "POST", json: body }),
-    onSuccess: (r) => toast.success(`Test email queued for ${r.to}`, { description: r.delivery === "mailpit" ? "it lands in Mailpit in a moment" : "delivered by the provider" }),
+    onSuccess: (r) => toast.success(`Test email queued for ${r.to}`, { description: r.delivery === "provider" ? "delivered by the provider" : r.delivery === "mailpit" ? "it lands in Mailpit in a moment" : "it lands in the inbox in a moment" }),
     onError: (err) => {
       if (err instanceof ApiError && err.status === 429) toast.warning("Too many test emails", { description: err.detail || "Each operator can send 5 an hour." });
       else toast.error("Couldn't send the test email", { description: errorMessage(err) });
     },
     onSettled: () => {
-      setTimeout(() => void qc.invalidateQueries({ queryKey: keys.devMail }), 2000);
+      setTimeout(() => {
+        void qc.invalidateQueries({ queryKey: keys.devMail });
+        void qc.invalidateQueries({ queryKey: ["portal", "mail"] });
+      }, 2000);
       void qc.invalidateQueries({ queryKey: ["ops", "jobs"] });
     },
   });

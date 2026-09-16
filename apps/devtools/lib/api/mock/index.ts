@@ -59,6 +59,9 @@ import { mockAuthFetch, resetMockAuth } from "./auth";
 import { mockDbFetch } from "./db";
 import { mockLogsFetch, resetMockLogs } from "./logs";
 import { mockObservabilityFetch, resetObservabilityMock } from "./observability";
+import { mockEnvFetch, resetMockEnv } from "./env";
+import { mockFlagsFetch, resetMockFlags } from "./flags";
+import { deliverMockMail, mockMailFetch, mockMailPreviewFetch, resetMockMail } from "./mail";
 import { mockSqlFetch } from "./sql";
 import { mockDb } from "./schema";
 
@@ -186,6 +189,9 @@ export function resetMock() {
   resetMockAuth();
   resetMockLogs();
   resetObservabilityMock();
+  resetMockMail();
+  resetMockEnv();
+  resetMockFlags();
 }
 
 /* ---------- Responses ---------- */
@@ -333,6 +339,7 @@ export async function mockFetch(input: string, init: RequestInit = {}): Promise<
     return problemResponse(problem(403, "forbidden", `requests that change something must carry the ${MUTATION_HEADER} header`));
   }
   if (url.pathname === "/_portal/api/events") return events(init.signal ?? undefined);
+  if (url.pathname === "/_portal/api/mail/stream") return mockMailFetch(url, method, init); // the inbox's stream (mock/mail.ts)
   if (url.pathname === "/_portal/app/_dev/requests/stream" || url.pathname === "/_portal/app/_dev/logs/stream") {
     if (app.state !== "running") return problemResponse(problem(502, "app_unavailable", `the app isn't answering at ${app.url}: connection refused`));
     return url.pathname.endsWith("requests/stream") ? devStream<Omit<DevRequest, "time">>("request", liveRequests, 3500, init.signal ?? undefined) : devStream<Omit<DevLog, "time">>("log", liveLogs, 2800, init.signal ?? undefined);
@@ -386,6 +393,8 @@ export async function mockFetch(input: string, init: RequestInit = {}): Promise<
   }
   if (p === "/_portal/api/jobs" && method === "GET") return json({ jobs: sources });
   if (p === "/_portal/api/logs" || p.startsWith("/_portal/api/logs/")) return mockLogsFetch(url, method, init); // the log store (mock/logs.ts)
+  if (p === "/_portal/api/mail" || p.startsWith("/_portal/api/mail/")) return mockMailFetch(url, method, init); // the mail catcher (mock/mail.ts)
+  if (p === "/_portal/api/env" || p.startsWith("/_portal/api/env/")) return mockEnvFetch(url, method, init); // the env editor (mock/env.ts)
   if (p.startsWith("/_portal/api/db/sql/")) return mockSqlFetch(p, method, init) ?? problemResponse(problem(404, "not_found", `no portal endpoint ${method} ${p}`));
   if (p.startsWith("/_portal/api/db/")) return mockDbFetch(url, method, init);
   if (p.startsWith("/_portal/app/")) return appProxy(p.slice("/_portal/app".length), url.searchParams, method, init);
@@ -400,9 +409,11 @@ function appProxy(path: string, query: URLSearchParams, method: string, init: Re
   if (path === "/v1/ping") return json({ message: settings.find((s) => s.key === "example.ping_message")?.value ?? "pong" });
   if (path.startsWith("/ops/")) return opsProxy(path, query, method, init);
   if (!app.console || !path.startsWith("/_dev")) return problemResponse(problem(404, "not_found", `no route matches ${method} ${path}`));
+  const preview = mockMailPreviewFetch(path, query, method); // the previews and their send (mock/mail.ts)
+  if (preview) return preview;
   if (method !== "GET" && method !== "HEAD") return problemResponse(problem(405, "method_not_allowed", "the dev console accepts GET only"));
   const dev: Record<string, unknown> = {
-    "/_dev/": { endpoints: ["/_dev/", "/_dev/app", "/_dev/config", "/_dev/jobs", "/_dev/logs", "/_dev/logs/stream", "/_dev/mail", "/_dev/migrations", "/_dev/openapi.json", "/_dev/requests", "/_dev/requests/stream", "/_dev/routes"] },
+    "/_dev/": { endpoints: ["/_dev/", "/_dev/app", "/_dev/config", "/_dev/jobs", "/_dev/logs", "/_dev/logs/stream", "/_dev/mail", "/_dev/mail/preview", "/_dev/mail/preview/send", "/_dev/mail/previews", "/_dev/migrations", "/_dev/openapi.json", "/_dev/requests", "/_dev/requests/stream", "/_dev/routes"] },
     "/_dev/app": devApp,
     "/_dev/routes": devRoutes,
     "/_dev/config": devConfig,
@@ -427,6 +438,10 @@ function opsProxy(path: string, query: URLSearchParams, method: string, init: Re
   // Accounts, sign-in methods and rate limiters (mock/auth.ts)
   const auth = mockAuthFetch(path, query, method, body);
   if (auth) return auth;
+
+  // Feature flags (mock/flags.ts)
+  const flags = mockFlagsFetch(path, query, method, body);
+  if (flags) return flags;
 
   // Settings
   if (path === "/ops/settings" && method === "GET") {
@@ -648,6 +663,7 @@ function opsProxy(path: string, query: URLSearchParams, method: string, init: Re
     void (async () => {
       await wait(1200);
       runs = runs.map((r) => (r.id === run.id ? { ...r, state: "completed", attempt: 1, attempted_at: now(), finalized_at: now() } : r));
+      deliverMockMail({ at: Date.now(), to, subject: "Test email from acme-api", text: "If you can read this, email delivery works.\n\nProvider: smtp\nDelivery: devmail\nSent by: dev console (orb dev)", category: "test", textOnly: true });
       devMail.messages.unshift({ id: `msg_${Math.random().toString(16).slice(2, 8)}`, from: { name: opsMail.from_name, address: opsMail.from_email }, to: [{ name: "", address: to }], subject: "Test email from acme-api", snippet: "test · If you can read this, email delivery works.", created: now(), size: 2048, attachments: 0, read: false });
       devMail.total = devMail.messages.length;
       addLine("app", `level=INFO msg="mail sent" template=test to=${to}`);

@@ -74,7 +74,7 @@ export const keys = {
 };
 
 /** Don't retry what won't change by itself: not connected, not signed in, or refused. */
-function retry(count: number, err: Error) {
+export function retry(count: number, err: Error) {
   if (err instanceof NotConnectedError) return false;
   if (err instanceof ApiError && err.status < 500) return false;
   return count < 1;

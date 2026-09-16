@@ -1,6 +1,11 @@
-import { Logs } from "@/components/logs/logs";
+import { Suspense } from "react";
+import { Logs, LogsSkeleton } from "@/components/logs/logs";
 
-/** What the app logs, from /_dev/logs and its stream. */
+/** Every source, from orb dev's log store (/_portal/api/logs); the whole view lives in the query string. */
 export default function LogsPage() {
-  return <Logs />;
+  return (
+    <Suspense fallback={<LogsSkeleton />}>
+      <Logs />
+    </Suspense>
+  );
 }

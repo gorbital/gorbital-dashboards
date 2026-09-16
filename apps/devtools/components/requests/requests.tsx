@@ -13,10 +13,11 @@ import { Sheet } from "@gorbital/dash/components/sheet";
 import { Table } from "@gorbital/dash/components/table";
 import { fmtInt, fmtMs } from "@gorbital/dash/lib/format";
 import { mergeTail, useLiveTail } from "@/lib/api/live";
+import { isNoLogStore, useRequestLogs } from "@/lib/api/logs";
 import { useCapabilities, useDevLogs, useDevRequests } from "@/lib/api/queries";
-import type { DevLog, DevRequest } from "@/lib/api/types";
+import type { DevRequest } from "@/lib/api/types";
 import { clock } from "@/lib/time";
-import { LogLine } from "@/components/logs/log-line";
+import { LogLine, type LogLike } from "@/components/logs/log-line";
 import { Gate } from "@/components/shared/gate";
 import { ProblemPanel } from "@/components/shared/problem-panel";
 import { QueryParam, setQueryParam } from "@/components/shared/query-param";
@@ -149,8 +150,14 @@ const columns = [
 ];
 
 function RequestDetail({ request, consoleOn }: { request: DevRequest; consoleOn: boolean }) {
-  const logs = useDevLogs(consoleOn);
-  const matching = useMemo(() => (logs.data?.logs ?? []).filter((l) => l.attrs.some((a) => a.key === "request_id" && a.value === request.request_id)), [logs.data, request.request_id]);
+  // The store keeps every record of the request, oldest first; an orb dev without one falls back to the console's buffer.
+  const store = useRequestLogs(request.request_id, true);
+  const noStore = isNoLogStore(store.error);
+  const buffer = useDevLogs(consoleOn && noStore);
+  const fromBuffer = useMemo(() => (buffer.data?.logs ?? []).filter((l) => l.attrs.some((a) => a.key === "request_id" && a.value === request.request_id)).reverse(), [buffer.data, request.request_id]);
+  const matching: LogLike[] = noStore ? fromBuffer : (store.data?.logs ?? []);
+  const pending = noStore ? buffer.isPending : store.isPending;
+  const meta = noStore ? "from /_dev/logs" : "from the log store · oldest first";
   return (
     <div className="grid gap-4 p-5">
       <KeyList
@@ -165,20 +172,22 @@ function RequestDetail({ request, consoleOn }: { request: DevRequest; consoleOn:
         ]}
       />
       <div className="flex items-center gap-2">
-        <Link href={`/logs?request_id=${encodeURIComponent(request.request_id ?? "")}`} className="text-[12px] text-primary hover:underline">
+        <Link href={`/logs?range=7d&request_id=${encodeURIComponent(request.request_id ?? "")}`} className="text-[12px] text-primary hover:underline">
           Open in Logs
         </Link>
         <span className="font-mono text-[11px] text-dim">· {matching.length} record{matching.length === 1 ? "" : "s"} carry this request id</span>
       </div>
-      <Panel title="Log records" meta="from /_dev/logs" flush>
-        {logs.isPending ? (
+      <Panel title="Log records" meta={meta} flush>
+        {pending ? (
           <div className="p-4 font-mono text-[11px] text-dim">loading…</div>
+        ) : store.error && !noStore ? (
+          <Empty title="Couldn't load the records" hint={store.error.message} />
         ) : matching.length === 0 ? (
-          <Empty title="No log records" hint="Nothing the app logged carries this request id, or the records have left the buffer." />
+          <Empty title="No log records" hint="Nothing the app logged carries this request id, or the records have left the store." />
         ) : (
           <ol className="border-t border-hairline">
-            {matching.map((l: DevLog, i) => (
-              <LogLine key={`${l.time}-${i}`} log={l} open />
+            {matching.map((l, i) => (
+              <LogLine key={l.id ?? `${l.time}-${i}`} log={l} open showSource={!noStore} />
             ))}
           </ol>
         )}

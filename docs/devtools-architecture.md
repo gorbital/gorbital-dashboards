@@ -19,7 +19,8 @@ apps/devtools
 ├── components/
 │   ├── overview/           Overview (with the health panel), OutputConsole, ConnectionProblem
 │   ├── routes/             the route list and the request builder
-│   ├── requests/, logs/    the two live-tailed pages; logs/log-line.tsx is the expandable record both use
+│   ├── requests/           the live-tailed request list; its detail reads the log store
+│   ├── logs/               the Logs screen on the log store (Phase 7, below); logs/log-line.tsx is the expandable record both use
 │   ├── modules/, audit/, settings/, database/, mail/
 │   ├── auth/               the Authentication screen (Phase 5, below)
 │   ├── jobs/               the Jobs screen (Phase 6, below): the list, the New job sheet, the job detail, the plan diff
@@ -71,6 +72,9 @@ serves `out/` at `http://127.0.0.1:3100` and resolves `/routes` to
 | `db.ts` | The Table Editor's shapes (`Schema`, `Table`, `Column`, `TableDetail`, `RowPage`, `Change`, `ColumnSpec`, `DDLResponse`…, matching `cli/internal/pgmeta`) and hooks: `useSchemas`, `useTables`, `useTableDetail`, `useTypes`, `useRows`, `useInsertRow`, `useUpdateRow`, `useDeleteRows`, `importRows`, `planDDL`, `applyDDL`, `waitForMigrations`. |
 | `mock/db.ts` | The in-memory PostgreSQL behind `/_portal/api/db/*` in mock mode (below). |
 | `mock/sql.ts` | The in-memory SQL runner behind `/_portal/api/db/sql/*` in mock mode. |
+| `logs.ts` | The log store's shapes (`LogRecord`, `LogPage`, `LogBucket`, `ErrorGroup`, `LogStats`, `SavedFilter`, matching `cli/internal/portal/logstore.go`) and hooks: `useLogs` (infinite, paging backwards by `next_before`), `useLogHistogram`, `useLogErrors`, `useRequestLogs`, `useLogStats`, `useSavedFilters`, `useSaveFilter`, `useDeleteFilter`, `useClearLogs`, `useLogTail` (the live tail on `logs/stream`), `isNoLogStore` (Phase 7, below). |
+| `mock/logs.ts` | The in-memory log store behind `/_portal/api/logs*` in mock mode. |
+| `../logs/filters.ts` | `LogFilters` and the URL codec (`parseFilters`, `filtersToParams`, `filtersToApi`, `resolveRange`, `bucketFor`), `../logs/tail.ts` the tail reducer, `../logs/fingerprint.ts` the error grouping mirrored from Go. |
 
 ### Live state: how a change reaches the page
 
@@ -181,7 +185,11 @@ exists only in the development phase (`PHASE_DEVELOPMENT_SERVER` in
 `next.config.ts`), because a static export can't carry rewrites. Verified
 end to end: the rewrite sends `Host: 127.0.0.1:3100` (the portal's loopback
 check passes), forwards the cookie and the mutation header, returns the
-`Set-Cookie` from `/_portal/auth`, and streams SSE without buffering. Sign
+`Set-Cookie` from `/_portal/auth`, and streams SSE without buffering, because
+the development phase also sets `compress: false`: with Next's default gzip
+on proxied responses the event streams (`/_portal/api/events`, `logs/stream`,
+the console's streams) stay buffered until they end and every tail goes
+quiet. Sign
 in on the dev server's origin (`http://localhost:3101/_portal/auth?t=…`), since a
 cookie set on `127.0.0.1` doesn't reach `localhost`.
 
@@ -215,6 +223,9 @@ reconnect logic run the same code in both modes. Restart takes 1.8 s and
 goes through `building`; Stop and Start change the state at once. Responses
 are `Response` objects with the right content types, so `apiFetch`'s error
 handling is exercised too.
+
+The log store (`/_portal/api/logs*`) has its own in-memory mock in
+`lib/api/mock/logs.ts`, described with the Logs screen below.
 
 The public demo builds with `NEXT_PUBLIC_DEVTOOLS_DATA=mock`
 (`apps/devtools/vercel.json`).
@@ -651,6 +662,146 @@ one pending. `planChange` mirrors `pgmeta.Plan` for the object kinds and
 `renderPlan` the file; apply refuses a dirty tree without `allow_dirty`,
 writes the migration as pending, and the migrate commands take 1.5 s to
 apply, roll back or redo, changing the catalog as they go.
+
+## Phase 7: Logs (`/logs`)
+
+The Logs screen reads orb dev's local log store (ADR-0072 in the gorbital
+repository): every line the app writes, orb dev's own messages and the
+PostgreSQL container's log, kept as JSON Lines under `.orb/portal/logs`
+and served at `/_portal/api/logs`. The Phase 1 screen read the app's
+`/_dev/logs` buffer, which restarted empty; this one survives restarts,
+filters on the server and pages backwards. The Requests page still tails
+`/_dev/requests`; its detail now reads `logs/request/{id}` and falls back
+to `/_dev/logs` on an orb dev without a store.
+
+### Files
+
+| File | What it is |
+|---|---|
+| `lib/api/logs.ts` | The types and hooks (in the data layer table above). |
+| `lib/logs/filters.ts` | `LogFilters` and the codec: `parseFilters(URLSearchParams)`, `filtersToParams`, `filtersToApi(filters, now)`, `resolveRange`, `bucketFor`, `describeFilters`, `filtersFromJSON`. |
+| `lib/logs/tail.ts` | `reduceTail` and `mergeRecords`: the live tail's state. |
+| `lib/logs/fingerprint.ts` | `normalizeShape`, `fingerprint`, `fingerprintID`, `literalOfShape`: the store's grouping, mirrored. |
+| `lib/api/mock/logs.ts` | The mock store. |
+| `components/logs/logs.tsx` | The page: URL state, the tail, the sheet; `LogsSkeleton` is the prerender. |
+| `components/logs/source-chips.tsx`, `filter-bar.tsx`, `histogram.tsx`, `log-list.tsx`, `log-line.tsx`, `errors-view.tsx`, `record-sheet.tsx`, `saved-filters.tsx`, `store-panel.tsx`, `store-gate.tsx` | The pieces, one each. |
+
+### The view is the query string
+
+Every filter lives in the URL with the API's own names, so a view is
+shareable and a link from another page is just a query string:
+`/logs?range=6h&source=http,auth&status_class=5xx&min_duration_ms=250&q=timeout`.
+The time window is `range=15m|1h|6h|24h|7d` (a preset ending now; `1h` is
+the default and omitted) or `from`/`to` (RFC 3339, an absolute window from
+a zoom or the Custom fields; it wins over `range`). The rest are `level`
+(comma list), `min_level`, `source` (comma list), `user`, `method`, `path`
+(prefix), `status_class`, `status`, `min_duration_ms`, `request_id`,
+`trace_id` and `q`. Two more parameters are UI state, not filters:
+`view=errors` for the Errors tab and `id=<record id>` for the open detail
+sheet. `parseFilters` drops what it can't read and normalises (levels
+upper-case, sources lower-case, the default range absent), so two URLs
+that mean the same compare equal (`filtersEqual`), which is how the saved
+filters menu knows which one is active.
+
+The page writes the URL with `history.replaceState(null, "", url)` and reads
+it back with `useSearchParams` inside the page's `Suspense`. The state
+passed is `null` on purpose: Next patches `replaceState` to sync its
+router, but skips a call whose state carries its own `__NA` marker, so
+passing `window.history.state` (as `setQueryParam` does for pages that
+also keep local state) would leave `useSearchParams` stale.
+
+`filtersToApi(filters, now)` turns the filters into the query for
+`/_portal/api/logs*`: a preset becomes `from = now - range` (no `to`, so
+the tail's window stays open), an absolute window passes `from` and `to`.
+The React Query key is the normalised filters, not the resolved times, so
+a preset doesn't refetch every second; the times are resolved in each
+`queryFn`.
+
+### The list and the tail
+
+`useLogs` is an infinite query over `GET logs?limit=200`; "Load older"
+follows `next_before` (the last record's id) into older records. The
+store answers `next_before` whenever a page is full, even when nothing
+older matches, so the last "Load older" can return an empty page and the
+button disappears then.
+
+`useLogTail` follows `GET logs/stream` with the same filters (minus
+`from`) and `after=<the newest id in the first page>`: the stream first
+replays what was stored after that id, then every new record that
+matches, so nothing falls between the page and the subscription. It is on
+while the switch is on, the window ends now (a zoom or a custom `to`
+disables it), the Records tab is showing and the first page has loaded;
+the subscription restarts when the filters or `after` change. `reduceTail`
+keeps the records newest first, capped at 1,000, and drops a record it
+already has (a reconnect replays). While the reader has scrolled into the
+list (an `IntersectionObserver` on a sentinel at the list's top) new
+records go to `pending` instead and a sticky "N new records" pill shows;
+clicking it, or scrolling back, flushes them in front. Turning the tail
+off and on again closes the gap the same way, through `after`.
+`mergeRecords` folds the tail's records and the pages' into one list by
+id; a refetch of the first page clears the tail, since the page now holds
+those records.
+
+The list renders in chunks of 150 rows as the reader scrolls (a sentinel
+near the end asks for the next chunk) and each row skips layout while off
+screen (`content-visibility: auto`), so a page of 1,000 records paints at
+once. `LogLine` (shared with the Requests detail) shows time, level, source,
+message or raw line and the key attributes; expanded, every attribute with
+a copy button and the actions: "All logs for this request", "Filter by
+user", "Filter by trace", "Details" (the sheet) and a link to the request.
+The source chips count the loaded records (the pages plus the tail) per
+source; when a source is selected only its count is known.
+
+### Histogram
+
+`useLogHistogram` asks `GET logs/histogram` over the same window with the
+bucket the window's size asks for (`bucketFor`): 1 m up to 2 h, 5 m up to
+12 h, 15 m up to 24 h, 1 h beyond. The bars stack debug, info, warn and
+error in the theme's level colours. A click zooms to that bucket, a drag
+across bars to their span: the page writes `from`/`to`, the tail pauses,
+and Reset zoom returns to the last preset.
+
+### Errors
+
+The Errors tab (`view=errors`) reads `GET logs/errors` for the window:
+records at WARN and above grouped by fingerprint (the message's shape
+with numbers, IDs, hex and quoted values replaced, plus the first line of
+`stack` or `error`), most recent first, with source, level, count, first
+and last seen. A group expands to its last record and "See records"
+switches to the Records tab filtered by the group's source, `min_level=WARN`
+and either the last record's `request_id` (a group of one) or the longest
+literal part of the shape as `q` (`literalOfShape`), since the shape's
+placeholders aren't searchable text.
+
+### Saved filters, the store and the gate
+
+The Saved filters menu lists `GET logs/filters` (apply one; the active one
+is checked) and opens a dialog to name the current filters (`PUT
+logs/filters` with `{name, query}`, `query` being the normalised
+`LogFilters`; a name that exists is replaced) or delete one (`DELETE
+logs/filters/{name}`). orb dev keeps them in `.orb/portal/log-filters.json`.
+
+`LogStorePanel` shows `GET logs/stats` (bytes of the 64 MiB, records,
+segments, the oldest record) and Clear behind a `ConfirmDialog` (`DELETE
+logs`); `compact` is the one-row footer of the Logs page, the full panel
+is for Project Settings later. A 404 `no_log_store` from any log endpoint
+(an orb dev from before the store) shows `NoLogStore` with the rebuild
+command instead of the page.
+
+### Mock
+
+`lib/api/mock/logs.ts` is a store in memory: about 400 records over the
+last hour from a generator that plays the app's moments (a request with
+its companions from the auth, storage or postgres loggers, jobs starting
+and failing, mail, orb dev rebuilding, raw lines), with a few error groups
+(panics with a stack, sign-in failures, rejected bodies, a duplicate key).
+It mirrors `LogQuery.Matches`, paging by id, the histogram, the error
+groups (through the same `fingerprint` module), `logs/request/{id}`,
+stats, clear and the saved filters with the same validation, and a stream
+that first replays after the cursor, then adds an event every 2 s while
+someone listens; a query after a pause catches the store up first, so a
+refresh shows new records as a real one would. `resetMockLogs` puts it
+back; `resetMock` calls it.
 
 ## What Phase 0 leaves for later
 

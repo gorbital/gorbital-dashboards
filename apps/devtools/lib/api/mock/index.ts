@@ -57,6 +57,7 @@ import type {
 } from "../types";
 import { mockAuthFetch, resetMockAuth } from "./auth";
 import { mockDbFetch } from "./db";
+import { mockLogsFetch, resetMockLogs } from "./logs";
 import { mockSqlFetch } from "./sql";
 import { mockDb } from "./schema";
 
@@ -182,6 +183,7 @@ export function resetMock() {
   lastRunAt.clear();
   testEmails = 0;
   resetMockAuth();
+  resetMockLogs();
 }
 
 /* ---------- Responses ---------- */
@@ -379,6 +381,7 @@ export async function mockFetch(input: string, init: RequestInit = {}): Promise<
     return json(plan(gen[1], input, gen[2] === "apply"));
   }
   if (p === "/_portal/api/jobs" && method === "GET") return json({ jobs: sources });
+  if (p === "/_portal/api/logs" || p.startsWith("/_portal/api/logs/")) return mockLogsFetch(url, method, init); // the log store (mock/logs.ts)
   if (p.startsWith("/_portal/api/db/sql/")) return mockSqlFetch(p, method, init) ?? problemResponse(problem(404, "not_found", `no portal endpoint ${method} ${p}`));
   if (p.startsWith("/_portal/api/db/")) return mockDbFetch(url, method, init);
   if (p.startsWith("/_portal/app/")) return appProxy(p.slice("/_portal/app".length), url.searchParams, method, init);

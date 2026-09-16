@@ -109,8 +109,12 @@ live route list with a request builder that sends through the portal: path
 and query params, headers, a JSON body, the dev operator or a pasted bearer
 token; the answer with its headers, timing and a link to the request),
 Requests (every request the app answered, live-tailed from the console
-stream, with the log records of a request), Logs (live-tailed records with
-level and attribute filters), Modules (what the running app wired:
+stream, with the log records of a request), Logs (orb dev's local log
+store: every source with counts, filters by time, level, user, method, path,
+status, duration, request or trace id and text, all in the URL; a histogram
+that zooms; a live tail; a record's detail with the rest of its request;
+saved filters; errors grouped by fingerprint; the store's size and Clear),
+Modules (what the running app wired:
 libraries, API modules with route counts, jobs, settings, flags and
 permission catalogs), Audit (the app's audit log with filters, stats and
 cursor pagination), Jobs (definitions with the schedule in plain English, an

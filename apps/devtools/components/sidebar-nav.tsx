@@ -1,6 +1,6 @@
 "use client";
 
-import { Boxes, Database, LayoutDashboard, ListOrdered, Mail, Route, ScrollText, ShieldCheck, SlidersHorizontal, Table2, Zap } from "lucide-react";
+import { Boxes, Database, LayoutDashboard, ListOrdered, Mail, Route, ScrollText, ShieldCheck, SlidersHorizontal, Table2, TerminalSquare, Zap } from "lucide-react";
 import { Nav, type NavSection } from "@gorbital/dash/components/nav";
 import { Tooltip } from "@gorbital/dash/components/tooltip";
 import { useCapabilities, useDevMail, useDevMigrations, useDevRoutes } from "@/lib/api/queries";
@@ -38,7 +38,15 @@ export function SidebarNav() {
       ],
     },
   ];
-  if (!noDatabase) sections.push({ title: "Database", items: [{ label: "Table Editor", href: "/database/tables", icon: Table2 }] });
+  if (!noDatabase) {
+    sections.push({
+      title: "Database",
+      items: [
+        { label: "Table Editor", href: "/database/tables", icon: Table2 },
+        { label: "SQL Editor", href: "/database/sql", icon: TerminalSquare },
+      ],
+    });
+  }
   return (
     <>
       <Nav sections={sections} />
@@ -56,6 +64,12 @@ function NoDatabaseSection() {
         <span className="flex cursor-not-allowed items-center gap-2.5 rounded-lg px-3 py-[7px] font-medium text-faint" aria-disabled="true">
           <Table2 size={15} strokeWidth={1.75} />
           <span>Table Editor</span>
+        </span>
+      </Tooltip>
+      <Tooltip content="This app has no database" side="right">
+        <span className="flex cursor-not-allowed items-center gap-2.5 rounded-lg px-3 py-[7px] font-medium text-faint" aria-disabled="true">
+          <TerminalSquare size={15} strokeWidth={1.75} />
+          <span>SQL Editor</span>
         </span>
       </Tooltip>
     </div>

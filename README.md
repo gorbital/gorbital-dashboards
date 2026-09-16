@@ -52,8 +52,8 @@ and Audit, Jobs, Settings, Mail and Database read the app's ops API
 treats it as a development operator with every `/ops` permission. Mock mode
 answers all of those endpoints too, with the same versions, reasons and rate
 limits.
-The Table Editor reads and changes the database through the portal's own
-API (`/_portal/api/db/*`).
+The Table Editor and the SQL Editor read and change the database through
+the portal's own API (`/_portal/api/db/*`).
 
 ## Run
 
@@ -119,7 +119,9 @@ scheduled list), Mail (the Mailpit inbox, the delivery configuration, a test
 email and the suppression list), Settings (runtime settings grouped, a typed
 editor with reasons and version conflicts, reset and history), Database
 (migrations with a working Apply, the pool, the health checks and the
-instance's runtime).
+instance's runtime)), SQL Editor (scripts in one transaction rolled back by
+default, a result per statement, EXPLAIN as a tree, snippets in `db/queries`,
+history, templates, save as migration; Monaco bundled with the app, no CDN).
 
 **Observability Portal** · Overview, Requests (latency heatmap), Traces and a trace
 waterfall, Errors grouped by cause, Jobs and queues, Mail, Logs, Instances,

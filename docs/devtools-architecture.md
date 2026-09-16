@@ -14,6 +14,7 @@ apps/devtools
 ├── app/                    App Router pages; server components that render one client component each
 │   ├── layout.tsx          fonts, the Shell, the DevtoolsProvider around everything
 │   ├── page.tsx            Overview
+│   ├── database/sql/       SQL Editor, in a Suspense boundary for ?snippet=
 │   └── routes|requests|logs|modules|audit|jobs|mail|settings|database
 ├── components/
 │   ├── overview/           Overview (with the health panel), OutputConsole, ConnectionProblem
@@ -22,6 +23,7 @@ apps/devtools
 │   ├── modules/, audit/, jobs/, settings/, database/, mail/
 │   ├── shared/             Gate, ProblemPanel, ReasonDialog, QueryParam, KeyValueEditor (below)
 │   ├── table-editor/       the Table Editor (Phase 2, below)
+│   ├── sql-editor/         SqlEditor, SnippetTree, Toolbar, Results, ExplainView, the dialogs
 │   ├── app-chip.tsx        the shell's app chip, live
 │   ├── portal-version.tsx  the shell's version, live
 │   ├── search.tsx          the ⌘K palette: pages, the app's live routes, app actions
@@ -31,6 +33,7 @@ apps/devtools
     ├── time.ts             clock, when, ago and between, for tables
     ├── use-now.ts          a ticking clock for uptimes and "ago"
     ├── table-editor/       the Table Editor's pure logic: URL state, literals, CSV, plan builders
+    ├── sql-editor/         the SQL Editor's pure logic: exports, plan tree, name rules, run requests, drafts
     └── api/                the data layer (below)
 ```
 
@@ -53,10 +56,12 @@ serves `out/` at `http://127.0.0.1:3100` and resolves `/routes` to
 | `store.ts` | The console store: the latest `AppStatus` from the stream, the output tail (capped at 2,000 lines like orb's own buffer), the dropped count and the connection state, read with `useConsole()` (`useSyncExternalStore`). `mergeLines` folds `/output` into what the stream delivered without duplicates and in time order. |
 | `queries.ts` | React Query hooks. Portal: `useStatus` (every 5 s), `useCapabilities` (what the status says the app can answer: `running`, `console`, `ops`, `database`), `useOutput`, `useReadiness`, `useAppAction`, `useMigrate`. Console: `useDevApp`, `useDevRoutes`, `useDevRequests`, `useDevLogs`, `useDevMigrations`, `useDevMail`. Ops: `useSettings`, `useSettingHistory`, `useSetSetting`, `useResetSetting`, `useJobDefinitions`, `useScheduledJobs`, `useJobsOverview`, `useJobRuns` (infinite, by cursor), `useRunJob`, `useUpdateJobDefinition`, `useResetJobDefinition`, `useRunAction("retry" \| "cancel")`, `useQueues`, `useQueueAction("pause" \| "resume")`, `useAudit` (infinite), `useAuditStats`, `useSystem`, `useOpsMail`, `useSendTestEmail`, `useSuppressions`, `useRemoveSuppression`, `useCurrentReleases`. Mutations toast on both outcomes and invalidate what they change; the settings and job definition ones leave `*_reason_required` and `*_version_conflict` to the form. Nothing is retried that won't change on its own (not connected, 4xx). |
 | `provider.tsx` | `DevtoolsProvider`: the `QueryClient`, the `Toaster`, the `TooltipProvider`, and the one events subscription for the whole app. |
+| `sql.ts` | The SQL Editor's types (`RunRequest`, `RunResult`, `StatementResult`, `RunError`, `Warning`, `Template`, `Snippet`, `HistoryEntry`, `MigrationResponse`, the EXPLAIN `PlanNode`) and hooks: `useSqlTemplates`, `useSnippets`, `useSqlHistory`, `useSqlCatalogTables`/`useSqlCatalogColumns` (for completion), `useRunSql`, `useExplainSql`, `useCheckSql`, `useSaveSnippet`, `useDeleteSnippet`, `useClearHistory`, `useSaveMigration`. |
 | `mode.ts` | `dataMode()`: `"live"` or `"mock"` (below). |
 | `mock/index.ts` | The in-memory `orb dev` for mock mode. |
 | `db.ts` | The Table Editor's shapes (`Schema`, `Table`, `Column`, `TableDetail`, `RowPage`, `Change`, `ColumnSpec`, `DDLResponse`…, matching `cli/internal/pgmeta`) and hooks: `useSchemas`, `useTables`, `useTableDetail`, `useTypes`, `useRows`, `useInsertRow`, `useUpdateRow`, `useDeleteRows`, `importRows`, `planDDL`, `applyDDL`, `waitForMigrations`. |
 | `mock/db.ts` | The in-memory PostgreSQL behind `/_portal/api/db/*` in mock mode (below). |
+| `mock/sql.ts` | The in-memory SQL runner behind `/_portal/api/db/sql/*` in mock mode. |
 
 ### Live state: how a change reaches the page
 
@@ -270,6 +275,7 @@ labels, `border-border`/`bg-elevated`/`text-dim`, `rounded-lg`, lime
 | (devtools) `table-editor/popover.tsx` | `Popover` | Radix popover with the menu's look; lives in the app until another page needs it |
 | `shell.tsx` | `Shell`, `AppChip`, `SearchButton` | `appChip` and `search` props take client components; `version` is a `ReactNode` |
 | `nav.tsx` | `Nav` | `tone: "live"` renders a pulsing dot |
+| `monaco.tsx`, `monaco-inner.tsx`, `monaco-theme.ts`, `monaco-sql.ts` | `MonacoEditor`, `EditorSkeleton`, `EditorHandle`, `SqlCatalog`, `EditorMarker` | the themed Monaco editor, client-only (below) |
 
 Files that hold state or handlers start with `"use client"`; the hookless
 ones (`Table`, `Pill`, `Segmented`, `Input`…) work in server components too
@@ -301,6 +307,124 @@ and only attach handlers when a client caller passes them.
    page to `components/search.tsx`.
 6. **Tests.** Pure logic (parsers, merges, transports) gets a `*.test.ts` next
    to it; `pnpm --filter devtools test` runs vitest in the node environment.
+
+## The SQL Editor (`/database/sql`)
+
+Phase 3 (ADR-0068): scripts against the app's database, one transaction
+per run. The backend is `cli/internal/portal/sql.go` (the endpoints under
+`/_portal/api/db/sql/`), `cli/internal/pgmeta/sql.go` (running, EXPLAIN, the
+warnings, the templates) and `cli/internal/portal/sqlstore.go` (snippets and
+history).
+
+### Files
+
+| File | What it is |
+|---|---|
+| `app/database/sql/page.tsx` | The server page: `<Suspense>` around `SqlEditor`, because `useSearchParams` (`?snippet=<name>` opens a saved query) needs a boundary in a static export. |
+| `components/sql-editor/sql-editor.tsx` | The page's state: the buffer and the selection, what the buffer came from (snippet, template, history, scratch) and whether it's dirty, the run settings, the last result and plan, and every dialog. Three panes: the tree, the editor with its toolbar, the results/explain tabs. |
+| `components/sql-editor/snippet-tree.tsx` | Favorites, Project (`db/queries`), Templates, History (collapsible, newest first, click to load, clear). Star, rename and delete per snippet. |
+| `components/sql-editor/toolbar.tsx` | Run / Run selection, the mode (rollback, commit, read-only, each with a tooltip), row limit, timeout, Explain / Analyze, Format, Save, Save as migration, and the shortcut list. |
+| `components/sql-editor/results.tsx` | A tab per statement (command tag, rows affected, "truncated" note), the grid (text cells, `NULL` in italic faint, the first 1,000 rows rendered), copy and download as CSV / JSON / Markdown, the warnings banner, and the error panel (message, SQLSTATE, detail, hint, "line N" jump). |
+| `components/sql-editor/explain-view.tsx` | The plan as a collapsible tree (node type, relation, index, costs, plan rows; actual rows/time/loops when analyzed; index/filter/hash conditions), the three costliest nodes lit up, raw JSON toggle. |
+| `components/sql-editor/dialogs.tsx` | Save / rename (name checked as you type), the warnings confirmation before a commit, Save as migration (preview → Apply with allow-dirty). |
+| `components/sql-editor/use-sql-catalog.ts` | What the completion knows: every table from `db/tables`, and the columns of the tables the buffer mentions (or of all of them when there are ≤ 12), each `db/tables/{schema}/{table}` fetched once. |
+| `components/sql-editor/use-hydrated.ts` | The page reads the layout's status query only after hydration: the Suspense boundary hydrates after the layout, which may already have the data the prerender didn't. |
+| `lib/sql-editor/export.ts` | Result set → CSV (RFC 4180, NULL empty), JSON (objects, NULL as null), Markdown. |
+| `lib/sql-editor/plan.ts` | `flattenPlan` (depth, parent, own cost = total minus children's, own time × loops when analyzed), `costliest`, `costShare`, `nodeTitle`, `nodeConditions`. |
+| `lib/sql-editor/run.ts` | `buildRunRequest` (selection vs whole buffer, mode, limit, timeout), `gateRun` (warnings block a commit, are a banner otherwise), `scriptControlsTransaction` (BEGIN/COMMIT/ROLLBACK/END need commit mode), the mode descriptions, `statementLabel`. |
+| `lib/sql-editor/snippets.ts` | `snippetNameError` (the portal's `^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$`), `suggestSnippetName`, `migrationSlug`. |
+| `lib/sql-editor/draft.ts` | The buffer in `localStorage` under `devtools.sql.draft.<app>`, every access in try/catch. |
+
+### Monaco: self-hosted, themed
+
+`packages/ui/components/monaco.tsx` exports `MonacoEditor`, a
+`next/dynamic` import with `ssr: false` of `monaco-inner.tsx` and an
+`EditorSkeleton` until the chunk arrives, so the static export prerenders
+the page with a skeleton and never runs Monaco on the server.
+
+`monaco-inner.tsx` imports the editor **from the npm package**, not a CDN:
+`monaco-editor/editor/editor.api` plus the contributions the editor needs
+(`monaco-editor/features/{bracketMatching,find,suggest,hover,comment,…}/register`)
+and the language (`monaco-editor/languages/definitions/pgsql/register`), then
+`loader.config({ monaco })` hands that instance to `@monaco-editor/react`, whose
+loader otherwise fetches `monaco-editor@x/min/vs` from jsdelivr (the URL is
+still in the bundle as the loader's default; it's never requested). The
+editor worker is `new Worker(new URL("monaco-editor/editor/editor.worker.js",
+import.meta.url), { type: "module" })`, which Turbopack emits as its own
+chunk, so the embedded portal works offline. Importing `editor.api` instead of
+`monaco-editor` keeps the other 80 languages and the TypeScript/CSS/JSON
+workers out of the bundle.
+
+The theme (`monaco-theme.ts`) is built from `theme.ts`: background `bg`,
+keywords in the lime `primary` (bold), strings `warn`, numbers `info`,
+functions `violet`, comments `dim` italic, the cursor lime, selections and
+bracket matches lime washes, the suggest and hover widgets on `elevated`
+with `border`. It is the one place besides `theme.ts` that spells a colour,
+because Monaco wants hex strings. `monacoDefaults` sets 12.5 px Geist Mono
+(`var(--font-geist-mono)`), no minimap, line numbers, bracket matching and
+pair colours, `automaticLayout`, no word-based suggestions.
+
+### Completion
+
+`monaco-inner.tsx` registers one `pgsql` completion provider (once per page
+load) that reads a module-level catalog the `MonacoEditor` prop `catalog`
+updates. It offers: after `alias.` or `table.`, that table's columns
+(`monaco-sql.ts` resolves the alias from `FROM x AS a`, `JOIN`, `UPDATE`,
+`INTO`); after `schema.`, the schema's tables; otherwise every table (bare
+for `public`, `schema.table` otherwise), the columns of the tables the
+script mentions (or of every table when the catalog has ≤ 12), the keyword
+list and common functions as snippets. `monaco-sql.ts` is Monaco-free and
+tested from `lib/sql-editor/completion.test.ts`.
+
+### Running
+
+`⌘⏎` (or Run) sends the selection when there is one, else the whole buffer,
+with the mode, the row limit (100 / 500 / 1,000 / 10,000) and the timeout
+(10 s … 5 min). In **commit** mode the page calls `check` first and, when it
+returns warnings (drops, truncates, deletes and updates without WHERE,
+dropped columns, type changes), a `ConfirmDialog` lists them by kind and
+line before "Run anyway". In **rollback** and **read-only** mode the
+warnings the run returns are a dismissable banner saying nothing was
+committed. A script with `BEGIN`/`COMMIT`/`ROLLBACK`/`END` outside commit
+mode is refused (the page says so before sending; the server would answer
+422). The server's SQL error is data in a 200 response: the error panel
+shows it and a Monaco marker sits on `error.line` (offset by the
+selection's first line when a selection ran) until the buffer changes.
+After every run a "Committed" / "Rolled back" badge and the duration.
+Explain and Analyze call `explain` with the selection or the buffer.
+
+### Snippets, history, drafts
+
+Snippets are files under `db/queries/<name>.sql` in the app (committed with
+it); favourites are the developer's own under `.orb/portal/`. Save is `PUT
+snippets/{name}` with the buffer; the star toggles `favorite` with the same
+SQL; rename saves under the new name then deletes the old; delete asks
+first. Opening a snippet puts `?snippet=<name>` in the URL. The editor's tab
+title shows `<name>.sql` with an "unsaved" mark when the buffer differs from
+the saved copy (and the document title gets a "●"), and switching away from
+a dirty buffer asks first. History is `GET history` (the last 500 runs on
+this machine, `.orb/portal/sql-history.jsonl`, recorded by the server on
+every run), invalidated after each run; Clear is `DELETE history`. The
+buffer itself survives a reload through `localStorage`
+(`devtools.sql.draft.<app>`, with the snippet it came from and the mode).
+"Save as migration" previews `POST migration` without `apply` (the file's
+path and content), then applies with `allow_dirty` when the working tree
+isn't clean.
+
+### Mock mode
+
+`lib/api/mock/sql.ts` answers every endpoint from memory: six templates, two
+snippets (one favourite), a starting history, a small catalog for
+completion. `run` splits the script on semicolons outside strings and
+comments, answers SELECTs on known tables with sample rows (NULLs included,
+truncated at the row limit), UPDATE/DELETE/INSERT with command tags, and a
+SQLSTATE error with its line for a script that says `boom` (or has a typo
+like `SELEC`); a write in read-only mode fails as PostgreSQL would.
+`check` is a port of `pgmeta.Check`. `explain` returns a Limit → Sort →
+Seq Scan plan, with actual figures when analyzed. `migration` previews the
+file and refuses to apply without `allow_dirty`.
+
+## What Phase 0 leaves for later
 
 ## What Phase 1 leaves for later
 

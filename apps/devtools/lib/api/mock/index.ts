@@ -54,6 +54,7 @@ import type {
   SystemInfo,
 } from "../types";
 import { mockDbFetch } from "./db";
+import { mockSqlFetch } from "./sql";
 
 const MUTATION_HEADER = "X-Orb-Portal";
 
@@ -345,6 +346,7 @@ export async function mockFetch(input: string, init: RequestInit = {}): Promise<
     if (!body) return problemResponse(problem(400, "invalid_json", "the body must be JSON"));
     return json(plan(gen[1], (body.input as Record<string, unknown> | undefined) ?? {}, gen[2] === "apply"));
   }
+  if (p.startsWith("/_portal/api/db/sql/")) return mockSqlFetch(p, method, init) ?? problemResponse(problem(404, "not_found", `no portal endpoint ${method} ${p}`));
   if (p.startsWith("/_portal/api/db/")) return mockDbFetch(url, method, init);
   if (p.startsWith("/_portal/app/")) return appProxy(p.slice("/_portal/app".length), url.searchParams, method, init);
   return problemResponse(problem(404, "not_found", `no portal endpoint ${method} ${p}`));

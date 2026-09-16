@@ -17,7 +17,8 @@
     "papaparse": "^5.7.0",
     "radix-ui": "^1.6.7",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "sql-formatter": "^15.8.2"
   },
   "devDependencies": {
     "@gorbital/tsconfig": "workspace:*",

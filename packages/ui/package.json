@@ -3,7 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "sideEffects": ["*.css"],
+  "sideEffects": [
+    "*.css"
+  ],
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
@@ -13,8 +15,10 @@
     "react-dom": "^19"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "cmdk": "^1.1.1",
     "lucide-react": "^1.46.0",
+    "monaco-editor": "^0.56.0",
     "radix-ui": "^1.6.7",
     "sonner": "^2.0.8"
   },

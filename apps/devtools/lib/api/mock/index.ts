@@ -63,6 +63,7 @@ import { mockEnvFetch, resetMockEnv } from "./env";
 import { mockFlagsFetch, resetMockFlags } from "./flags";
 import { deliverMockMail, mockMailFetch, mockMailPreviewFetch, resetMockMail } from "./mail";
 import { mockSqlFetch } from "./sql";
+import { mockStorageFetch, resetMockStorage } from "./storage";
 import { mockDb } from "./schema";
 
 const MUTATION_HEADER = "X-Orb-Portal";
@@ -192,6 +193,7 @@ export function resetMock() {
   resetMockMail();
   resetMockEnv();
   resetMockFlags();
+  resetMockStorage();
 }
 
 /* ---------- Responses ---------- */
@@ -402,7 +404,7 @@ export async function mockFetch(input: string, init: RequestInit = {}): Promise<
 }
 
 /** The app behind the proxy: readiness, the dev console and the ops API. */
-function appProxy(path: string, query: URLSearchParams, method: string, init: RequestInit): Response {
+function appProxy(path: string, query: URLSearchParams, method: string, init: RequestInit): Response | Promise<Response> {
   if (app.state !== "running") return problemResponse(problem(502, "app_unavailable", `the app isn't answering at ${app.url}: connection refused`));
   if (path === "/readyz") return json({ status: "ok", checks: { postgres: "ok", river: "ok" } });
   if (path === "/healthz") return json({ status: "ok" });
@@ -430,8 +432,9 @@ function appProxy(path: string, query: URLSearchParams, method: string, init: Re
 const reasonOf = (body: Record<string, unknown>) => (typeof body.reason === "string" ? body.reason.trim() : "");
 
 /** `/ops/*` as the Full preset answers the development operator. */
-function opsProxy(path: string, query: URLSearchParams, method: string, init: RequestInit): Response {
+function opsProxy(path: string, query: URLSearchParams, method: string, init: RequestInit): Response | Promise<Response> {
   if (!portalStatus.project.features.includes("ops")) return problemResponse(problem(404, "not_found", `no route matches ${method} ${path}`));
+  if (path.startsWith("/ops/storage")) return mockStorageFetch(path, query, method, init) ?? problemResponse(problem(404, "not_found", `no route matches ${method} ${path}`)); // file storage (mock/storage.ts)
   const body = method === "GET" ? {} : parseBody(init);
   if (!body) return problemResponse(problem(422, "validation_failed", "the body must be JSON"));
 

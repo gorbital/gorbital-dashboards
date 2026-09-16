@@ -28,6 +28,7 @@ apps/devtools
 │   ├── settings/           runtime settings, and the Feature flags tab (Phase 9, below)
 │   ├── auth/               the Authentication screen (Phase 5, below)
 │   ├── jobs/               the Jobs screen (Phase 6, below): the list, the New job sheet, the job detail, the plan diff
+│   ├── storage/            the Storage screen (Phase 10, below): the driver card, the file browser, the preview pane, the guard
 │   ├── shared/             Gate, ProblemPanel, ReasonDialog, QueryParam, KeyValueEditor (below)
 │   ├── table-editor/       the Table Editor (Phase 2, below)
 │   ├── sql-editor/         SqlEditor, SnippetTree, Toolbar, Results, ExplainView, the dialogs
@@ -51,6 +52,7 @@ apps/devtools
     ├── flags/              the Flags tab's pure logic: a state in words, the form, what the app would refuse
     ├── sql-editor/         the SQL Editor's pure logic: exports, plan tree, name rules, run requests, drafts
     ├── observability/      the Observability screen's pure logic: formatting, grading, route ranking, share bars, sample series
+    ├── storage/            the Storage screen's pure logic: keys and prefixes, listings, sizes and kinds, upload progress, the guard
     └── api/                the data layer (below)
 ```
 
@@ -89,6 +91,8 @@ serves `out/` at `http://127.0.0.1:3100` and resolves `/routes` to
 | `mock/env.ts` | An in-memory `.env` and `.env.example`, parsed and rewritten like orb dev, behind `/_portal/api/env*` in mock mode. |
 | `flags.ts` | Feature flags (ADR-0057): `OpsFlag`, `FlagState`, `FlagTargets`, `FlagChange` matching `examples/full-single/api/openapi.json`; `useFlags`, `useFlagHistory`, `useSetFlag`, `useResetFlag` (both leave `flag_reason_required`, `invalid_flag_state` and `flag_version_conflict` to the form). |
 | `mock/flags.ts` | The sample flags behind `/ops/flags*` in mock mode, with versions, the required reason and the library's state validation. |
+| `storage.ts` | The Storage screen's data layer (ADR-0075): `StorageStatus`, `StorageObject`, `StoragePage`, `SignedURL` and the bodies, matching `internal/modules/ops/delivery/storage.go`; `useStorageStatus` (30 s), `useStorageObjects` (infinite, by `next_cursor`), `useStorageObject`, `useDeleteObjects`, `useMoveObject`, `useMakeDirectory`, `useSignedUrl`, `listAllKeys`; `uploadObject` (XHR with progress) and `fetchObjectContent` / `downloadObject` for the bytes (Phase 10, below). |
+| `mock/storage.ts` | The bucket in memory behind `/ops/storage…` in mock mode, with a `local` and a `spaces` profile. |
 | `../logs/filters.ts` | `LogFilters` and the URL codec (`parseFilters`, `filtersToParams`, `filtersToApi`, `resolveRange`, `bucketFor`), `../logs/tail.ts` the tail reducer, `../logs/fingerprint.ts` the error grouping mirrored from Go. |
 | `observability.ts` | The Observability screen's types and hooks (Phase 8, below). |
 | `mock/observability.ts` | The health table, the sampler, the pgmeta statistics and `/ops/observability/*` in mock mode. |
@@ -1044,6 +1048,122 @@ bad names and multi-line values with `invalid_env_change`.
 organisations and a history) with versions, the required reason and the
 library's state validation. All three are registered with one dispatch
 line each in `mock/index.ts`; `resetMock` resets them.
+
+## Storage (`/storage`)
+
+Phase 10 (roadmap items 73–76, [ADR-0075](../../gorbital/docs/adr/0075-file-storage.md)):
+the app's file storage through the operators' API, `/ops/storage…`
+(`internal/modules/ops/delivery/storage.go`, guide `docs/guides/storage.md`).
+The driver card, a file browser in a list or a column view, uploads with
+progress, downloads, delete, move, new folder, previews, metadata, signed
+URLs, and a guard that keeps a bucket elsewhere read-only until unlocked.
+
+```
+app/storage/page.tsx             <Suspense> around the client component (the folder, the open object and the view are in the query string)
+components/storage/
+├── storage.tsx                  the page: the URL state, Gate (ops), the storage_off panel, the guard banner, the driver card, the browser
+├── driver-card.tsx              item 73: driver (with the "local" badge), bucket, directory or endpoint with the region, status with the ping, error, public URL;
+│                                in mock mode a local/spaces switch for the guard
+├── browser.tsx                  item 74: breadcrumbs, the toolbar (Refresh, New folder, Upload; the selection's Download and Delete), drag-and-drop,
+│                                the upload runner, the view, the preview pane, and every dialog wired together
+├── list-view.tsx                name, size, modified, type; checkboxes; sortable headers; a menu per row; "Load more"
+├── column-view.tsx              Finder-like columns, one per level from the root down, each its own listing
+├── preview.tsx                  items 74 and 75: the object inline (image, PDF, text) or metadata only; key, size, type, ETag, modified, the metadata map; the actions
+├── dialogs.tsx                  New folder, Move or rename, Signed URL (GET/PUT, expiry presets, copy, open, expires_at, a curl line for PUT), the upload progress
+├── guard-banner.tsx             item 76: the red banner, "Unlock for this session" behind a confirm, "Lock"
+├── use-guard.ts                 the unlock state, remembered per bucket in sessionStorage
+└── common.tsx                   EntryIcon, KindBadge, ProblemNote, MetaRow, CopyButton
+lib/storage/
+├── keys.ts                      keyError / validKey (storage.ValidKey mirrored), validPrefix, normalizePrefix, breadcrumbs, ancestors, parentPrefix, baseName,
+│                                joinKey, isDirectoryMarker, moveTarget, isRename
+├── list.ts                      mergePages (pages → one listing, prefixes and keys kept once, markers hidden), entriesOf, sortEntries (folders first), nextSort, describeListing
+├── format.ts                    formatSize, formatBytes, formatModified, formatExpiry, previewKind (image, pdf, text, other), contentTypeFor, shortType, TEXT_PREVIEW_LIMIT
+├── upload.ts                    planUploads (one item per file, refused keys marked up front), aggregateProgress, updateItem, describeBatch
+└── guard.ts                     bucketId, readUnlock / writeUnlock (sessionStorage, every access in try/catch), isLocked, guardMessage
+lib/api/storage.ts               the types (StorageStatus, StorageObject, StoragePage, SignedURL and the bodies, matching the Go handler) and the hooks (below)
+lib/api/mock/storage.ts          the bucket in memory (below)
+```
+
+**Data flow.** `useStorageStatus` reads `GET /ops/storage` every 30 s;
+`useStorageObjects(prefix, enabled, limit)` is an infinite query on
+`GET /ops/storage/objects?prefix=&limit=&cursor=` whose "Load more" follows
+`next_cursor`; `mergePages` flattens the pages and keeps a prefix or a key
+once, since the store's cursor is the last key it scanned and a folder
+folded at a page boundary comes back on the next page too. `useStorageObject(key)`
+reads the open object. The writes (`useDeleteObjects`, one `DELETE` per key
+in order; `useMoveObject`; `useMakeDirectory`; `useSignedUrl`) toast and
+invalidate every listing (a move touches two folders), the object and the
+audit log. Bytes don't go through `apiFetch`: `uploadObject` is `PUT
+/ops/storage/object?key=` with the file as the raw body and its
+`Content-Type` (the browser's, else by extension), as an `XMLHttpRequest`
+for upload progress with the cookie and the mutation header `apiFetch` would
+send (in mock mode, `transportFetch`); `fetchObjectContent` is `GET
+/ops/storage/object/content?key=` as a Blob, which `downloadObject` saves
+under the key's last segment and the preview pane shows inline. Deleting a
+folder lists every key under it with `recursive=true` (`listAllKeys`),
+markers included, and deletes them one by one.
+
+**The view is the query string.** `?prefix=images/2026/` is the folder,
+`?key=images/2026/logo.svg` the open object (its parent wins over a stray
+prefix, so a link to an object always opens its folder), `?view=columns`
+the column view, `?limit=` the page size (200 by default; smaller to see
+"Load more"). The page writes the URL with `history.replaceState(null, …)`
+like the Logs page, so `useSearchParams` follows. The list view sorts on the
+client (folders stay first whatever the sort) and keeps a selection for
+Download (one object) and Delete (the count in the confirm dialog, folders
+with everything under them). The column view renders `ancestors(prefix)` as
+columns, each with its own listing and "Load more", the item on the path
+lit up. Dropping files anywhere on the browser uploads them into the
+current folder; the upload dialog shows one bar per file and one for the
+batch (`aggregateProgress`) and stays open until the last file finished.
+
+**Preview and metadata.** `previewKind` decides from the content type, then
+the extension: images inline from a blob URL, PDFs in an `<iframe>` from a
+blob URL, text, JSON, CSV and Markdown as text (the first 64 KiB, with a
+note when cut), anything else metadata only; above 32 MB the pane shows
+metadata only and offers the download. The metadata list shows the key
+with a copy button, the size (rounded and in bytes), the content type, the
+ETag, the modification time (local and RFC 3339) and the metadata map. The
+Signed URL dialog posts `{key, method, expiry_seconds}` with the presets
+15 min, 1 h, 24 h and 7 d, shows the URL with Copy and (for GET) Open, and
+`expires_at` both as a time and as "in 1h"; a PUT URL comes with the curl
+line that uploads to it.
+
+**The guard (item 76).** When the status says `local: false` the page
+shows a red banner, "This is the spaces bucket acme-files — not on this
+machine", and the browser is read-only: Upload, New folder, Delete, Move
+and the signed PUT method are disabled (a drop shows the refusal). "Unlock
+for this session" asks first, then `writeUnlock` remembers the bucket
+(`driver:bucket@endpoint`) in `sessionStorage.devtools.storage.unlocked`,
+this tab only; "Lock" forgets it. A local store is never locked.
+
+**Refusals.** The page renders under `Gate need="ops"`; a 404 `storage_off`
+from `/ops/storage` shows its own panel with `orb add storage`; any other
+status error the `ProblemPanel`. A 503 `storage_unavailable` from a listing
+(the service didn't answer; the card shows the reason) and a 422
+`invalid_storage_key` show inline with their code; the New folder and Move
+dialogs refuse a bad key before sending (`keyError`, the same rules as
+`storage.ValidKey`: 1 to 1024 bytes, no empty, `.` or `..` segment, no
+leading slash, no control characters).
+
+**Mock mode.** `lib/api/mock/storage.ts` keeps a bucket in memory:
+`images/` (three SVGs and a PNG, one with metadata), `invoices/2026/` (two
+one-page PDFs with metadata), `exports/` (a CSV, a JSON report, a Markdown
+README), `notes.txt`, and `drafts/`, an empty folder that exists through
+its hidden `.keep` marker. It answers every endpoint with the app's status
+and problem codes (`invalid_storage_key`, `storage_object_not_found`,
+`storage_off`), lists with the local driver's algorithm (keys sorted,
+folded at the next slash, `limit` a page, the cursor the last key
+consumed, markers hidden), uploads any body with the header's content type
+(else by extension), downloads with the content type and disposition,
+moves, makes directories through the marker, and signs URLs per driver
+(the app's `/storage/…?exp=&method=&sig=` for local, a presigned Spaces URL
+otherwise) with the expiry clamped to the contract. Two profiles,
+switchable from the driver card in mock mode and remembered in
+`localStorage.devtoolsStorageProfile`: `local` (the default) and `spaces`
+(`local: false`, for the guard); `off` answers 404 `storage_off`
+everywhere. `opsProxy` hands `/ops/storage` paths here before it parses a
+JSON body, because an upload's body is the file; `resetMock` resets it.
 
 ## What Phase 0 leaves for later
 

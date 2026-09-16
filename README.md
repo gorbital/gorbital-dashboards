@@ -47,7 +47,7 @@ localStorage.devtoolsData = "mock"   // or "live"; then reload
 
 Every Dev Portal page is live: the Overview, Routes, Requests, Logs,
 Modules, Mail, Environment and Database read the dev console (`/_portal/app/_dev/*`),
-and Audit, Jobs, Settings, Mail, Authentication and Database read the app's ops API
+and Audit, Jobs, Settings, Mail, Authentication, Database and Storage read the app's ops API
 (`/_portal/app/ops/*`), where `orb dev` sends its console token and the app
 treats it as a development operator with every `/ops` permission. Mock mode
 answers all of those endpoints too, with the same versions, reasons and rate
@@ -149,7 +149,12 @@ history, templates, save as migration; Monaco bundled with the app, no CDN), Sch
 arrange, find, export as PNG, SVG or Mermaid), Objects (functions, triggers,
 enums, extensions, indexes and views, each created and dropped as a migration
 shown before it is written), Migrations (every file with its SQL and state;
-apply pending, roll back, redo, new file).
+apply pending, roll back, redo, new file), Storage (the app's file storage: the
+driver and bucket with its status; a file browser in a list or a column view
+with upload and drag-and-drop, download, delete, move or rename, new folder;
+image, PDF and text previews; metadata; signed GET and PUT URLs with an
+expiry; a red banner and read-only mode for a bucket that isn't on this
+machine, until unlocked for the session).
 
 **Observability Portal** · Overview, Requests (latency heatmap), Traces and a trace
 waterfall, Errors grouped by cause, Jobs and queues, Mail, Logs, Instances,

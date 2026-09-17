@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Boxes, Cloud, FileCode2, GitBranch, Mail, ShieldCheck, Wand2, Zap } from "lucide-react";
+import { ArrowRight, Boxes, Cloud, FileCode2, GitBranch, Layers, Mail, Package, ShieldCheck, Wand2, Zap } from "lucide-react";
 import { Badge } from "@gorbital/dash/components/badge";
 import { Button } from "@gorbital/dash/components/button";
 import { Page, PageHeader } from "@gorbital/dash/components/page";
@@ -12,21 +12,26 @@ import { Tooltip } from "@gorbital/dash/components/tooltip";
 import { Sheet } from "@gorbital/dash/components/sheet";
 import { useProject } from "@/lib/api/project";
 import { useStatus } from "@/lib/api/queries";
+import { useRouteInfo } from "@/lib/api/routes";
 import type { Project } from "@/lib/api/types";
 import { defaultMailForm, defaultStorageForm, toMailCommand, toMailInput, toStorageCommand, toStorageInput, validateMailForm, validateStorageForm, type MailForm, type StorageForm } from "@/lib/generators/add";
 import { gateReason, generatorInfo, orderGenerators, type GeneratorInfo } from "@/lib/generators/catalog";
+import { defaultMiddlewareForm, moduleOptions, toMiddlewareCommand, toMiddlewareInput, validateMiddlewareForm, type MiddlewareForm } from "@/lib/generators/middleware";
+import { defaultModuleForm, toModuleCommand, toModuleInput, validateModuleForm, type ModuleForm } from "@/lib/generators/module";
 import { defaultResourceForm, toResourceCommand, toResourceInput, validateResourceForm, type ResourceForm } from "@/lib/generators/resource";
 import { useMounted } from "@/components/db-objects/common";
 import { ProblemPanel } from "@/components/shared/problem-panel";
 import { QueryParam, setQueryParam } from "@/components/shared/query-param";
 import { GeneratorSheet } from "./generator-sheet";
 import { MailFormFields } from "./mail-form";
+import { MiddlewareFormFields } from "./middleware-form";
 import { MigrationFormFields, migrationNameError } from "./migration-form";
+import { ModuleFormFields } from "./module-form";
 import { JobNote, OrgsNote, RlsNote } from "./notes";
 import { ResourceFormFields } from "./resource-form";
 import { StorageFormFields } from "./storage-form";
 
-const icons: Record<string, typeof Wand2> = { resource: Boxes, job: Zap, migration: FileCode2, "add-mail": Mail, "add-storage": Cloud, "add-rls": ShieldCheck, "add-orgs": GitBranch };
+const icons: Record<string, typeof Wand2> = { resource: Boxes, module: Package, middleware: Layers, job: Zap, migration: FileCode2, "add-mail": Mail, "add-storage": Cloud, "add-rls": ShieldCheck, "add-orgs": GitBranch };
 
 /** The generators hub (ADR-0077): a card per generator the status lists, each with a sheet: form → preview (the diff) → apply → restart or migrate. `?generator=` opens a card. */
 export function Generators() {
@@ -72,6 +77,8 @@ export function Generators() {
       {proj && (
         <>
           <ResourceSheet open={open === "resource"} onClose={() => select(null)} project={proj} />
+          <ModuleSheet open={open === "module"} onClose={() => select(null)} onUseResource={() => select("resource")} />
+          <MiddlewareSheet open={open === "middleware"} onClose={() => select(null)} />
           <MigrationSheet open={open === "migration"} onClose={() => select(null)} />
           <MailSheet open={open === "add-mail"} onClose={() => select(null)} project={proj} />
           <StorageSheet open={open === "add-storage"} onClose={() => select(null)} project={proj} current={project.data?.storage.driver} />
@@ -156,6 +163,38 @@ function ResourceSheet({ open, onClose, project }: { open: boolean; onClose: () 
   return (
     <GeneratorSheet name="resource" open={open} onClose={() => { onClose(); setTouched(false); setForm(defaultResourceForm(project.tenancy === "multi" ? "org" : "user")); }} input={valid ? toResourceInput(form) : null} onInvalid={() => setTouched(true)} command={toResourceCommand(form)} meta={names ? `orb gen resource ${names}` : undefined}>
       {({ locked, usageError }) => <ResourceFormFields form={form} onChange={(f) => { setForm(f); setTouched(true); }} errors={errors} touched={touched} tenancy={project.tenancy} locked={locked} serverError={usageError} />}
+    </GeneratorSheet>
+  );
+}
+
+function ModuleSheet({ open, onClose, onUseResource }: { open: boolean; onClose: () => void; onUseResource: () => void }) {
+  const [form, setForm] = useState<ModuleForm>(() => defaultModuleForm());
+  const [touched, setTouched] = useState(false);
+  const errors = useMemo(() => validateModuleForm(form), [form]);
+  const valid = Object.keys(errors).length === 0;
+  const name = form.name.trim();
+  const reset = () => {
+    setTouched(false);
+    setForm(defaultModuleForm());
+  };
+  return (
+    <GeneratorSheet name="module" open={open} onClose={() => { onClose(); reset(); }} input={valid ? toModuleInput(form) : null} onInvalid={() => setTouched(true)} command={toModuleCommand(form)} meta={name ? `orb gen module ${name}` : undefined}>
+      {({ locked, usageError, plan }) => <ModuleFormFields form={form} onChange={(f) => { setForm(f); setTouched(true); }} errors={errors} touched={touched} locked={locked} serverError={usageError} plan={plan} onUseResource={() => { onUseResource(); reset(); }} />}
+    </GeneratorSheet>
+  );
+}
+
+function MiddlewareSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const routes = useRouteInfo(open);
+  const modules = useMemo(() => moduleOptions(routes.data?.routes), [routes.data]);
+  const [form, setForm] = useState<MiddlewareForm>(() => defaultMiddlewareForm());
+  const [touched, setTouched] = useState(false);
+  const errors = useMemo(() => validateMiddlewareForm(form), [form]);
+  const valid = Object.keys(errors).length === 0;
+  const name = form.name.trim();
+  return (
+    <GeneratorSheet name="middleware" open={open} onClose={() => { onClose(); setForm(defaultMiddlewareForm()); setTouched(false); }} input={valid ? toMiddlewareInput(form) : null} onInvalid={() => setTouched(true)} command={toMiddlewareCommand(form)} meta={name ? `orb gen middleware ${name}` : undefined}>
+      {({ locked, usageError, plan }) => <MiddlewareFormFields form={form} onChange={(f) => { setForm(f); setTouched(true); }} errors={errors} touched={touched} locked={locked} serverError={usageError} plan={plan} modules={modules} modulesLoading={routes.isPending && routes.fetchStatus !== "idle"} />}
     </GeneratorSheet>
   );
 }

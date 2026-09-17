@@ -17,7 +17,7 @@ describe("mockFetch", () => {
     expect(s.project.preset).toBe("full");
     expect(s.app).toMatchObject({ state: "running", addr: "127.0.0.1:8080", console: true });
     expect(s.links.api).toMatch(/^http:\/\/127\.0\.0\.1:/);
-    expect(s.generators).toEqual(["add-mail", "add-orgs", "add-rls", "add-storage", "job", "migration", "resource"]);
+    expect(s.generators).toEqual(["add-mail", "add-orgs", "add-rls", "add-storage", "job", "middleware", "migration", "module", "resource"]);
   });
 
   it("refuses mutations without the header, like the portal", async () => {

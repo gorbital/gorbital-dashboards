@@ -86,3 +86,57 @@ describe("the generators hub in mock mode", () => {
     expect(r.plan.summary).toMatch(/already has organisations/);
   });
 });
+
+describe("the module and middleware generators in mock mode", () => {
+  it("plans a module with one file per operation and the modules.gen.go diff", async () => {
+    const res = await post("/_portal/api/generators/module/plan", { input: { name: "Review", fields: ["title:string:unique", "body:text", "rating:enum(one,two,three)", "nickname:string?"], plural: "", id_prefix: "", org: false } });
+    expect(res.status).toBe(200);
+    const r = (await res.json()) as GeneratorResponse;
+    const paths = r.plan.changes.map((c) => c.path);
+    for (const op of ["create_review", "get_review", "list_reviews", "update_review", "delete_review"]) expect(paths).toContain(`internal/modules/reviews/usecase/${op}.go`);
+    const gen = r.plan.changes.find((c) => c.path === "internal/modules/modules.gen.go");
+    expect(gen).toMatchObject({ kind: "modify" });
+    expect(gen?.content).toContain("reviews.Module(),");
+    expect(gen?.before).not.toContain("reviews");
+    expect(r.plan.result).toMatchObject({ module: "reviews", route: "/v1/reviews", table: "reviews", scope: "user", permissions: ["reviews.review.read", "reviews.review.write"] });
+    expect(r.plan.changes.find((c) => c.path.startsWith("db/migrations/"))?.content).toContain("nickname text NOT NULL DEFAULT ''");
+  });
+
+  it("refuses what the module generator refuses", async () => {
+    const plan = (input: unknown) => post("/_portal/api/generators/module/plan", { input });
+    let res = await plan({ name: "Review", fields: ["title:string"], org: true });
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as Problem).detail).toMatch(/Phase 7/);
+    res = await plan({ name: "Review", fields: ["nickname:string?"] });
+    expect(((await res.json()) as Problem).detail).toMatch(/required string field/);
+    res = await plan({ name: "Review", fields: ["nickname:string?:unique", "title:string"] });
+    expect(((await res.json()) as Problem).detail).toMatch(/only required string fields can be unique/);
+    res = await plan({ name: "Shelf", fields: ["name:string"] });
+    expect(res.status).toBe(409);
+    res = await post("/_portal/api/generators/module/apply", { input: { name: "Review", fields: ["title:string"] }, allow_dirty: true });
+    expect(res.status).toBe(200);
+    expect(mockGeneratorState().modules).toContain("reviews");
+  });
+
+  it("plans middleware of each kind with the line that wires it", async () => {
+    const plan = async (input: unknown) => (await (await post("/_portal/api/generators/middleware/plan", { input })).json()) as GeneratorResponse;
+    let r = await plan({ name: "RequireClientVersion", module: "books", global: false, guard: false });
+    expect(r.plan.result).toMatchObject({ kind: "module", package: "delivery", file: "internal/modules/books/delivery/require_client_version.go", wire: "gorbital.Use(delivery.RequireClientVersion)" });
+    expect(r.plan.changes.map((c) => c.kind)).toEqual(["create", "create"]);
+    r = await plan({ name: "RequestTimer", module: "", global: true, guard: false });
+    expect(r.plan.result).toMatchObject({ kind: "global", file: "internal/middleware/request_timer.go", wire: "gorbital.WithMiddleware(middleware.RequestTimer)" });
+    expect(r.plan.next.join("\n")).toMatch(/main\.go/);
+    r = await plan({ name: "OwnsShelf", module: "shelves", global: false, guard: true });
+    expect(r.plan.result).toMatchObject({ kind: "guard" });
+    expect(r.plan.changes[0].content).toContain("guard.New");
+  });
+
+  it("refuses middleware without exactly one of module and global", async () => {
+    const plan = (input: unknown) => post("/_portal/api/generators/middleware/plan", { input });
+    expect((await plan({ name: "X", module: "books", global: true })).status).toBe(422);
+    expect((await plan({ name: "X", module: "", global: false })).status).toBe(422);
+    expect((await plan({ name: "X", module: "", global: true, guard: true })).status).toBe(422);
+    const res = await plan({ name: "X", module: "loans", global: false });
+    expect(((await res.json()) as Problem).detail).toMatch(/module loans not found/);
+  });
+});

@@ -13,6 +13,7 @@ import { envKeys } from "@/lib/api/env";
 import { applyGenerator, planGenerator, type GeneratorInputs, type HubGenerator, type NormalizedResponse } from "@/lib/api/generators";
 import { projectKeys } from "@/lib/api/project";
 import { keys, useAppAction, useMigrate } from "@/lib/api/queries";
+import type { Plan } from "@/lib/api/types";
 import { generatorInfo } from "@/lib/generators/catalog";
 import { isFileListPlan, isNoop } from "@/lib/generators/plan";
 import { CopyButton } from "@/components/jobs/plan-diff";
@@ -92,8 +93,8 @@ type Props<N extends HubGenerator> = {
   command?: string;
   /** Mono text next to the title. */
   meta?: string;
-  /** The form; `locked` once the plan was applied, `usageError` the CLI's 422 message so a field can claim it. */
-  children: (ctx: { locked: boolean; stage: Stage["kind"]; usageError?: string }) => ReactNode;
+  /** The form; `locked` once the plan was applied, `usageError` the CLI's 422 message so a field can claim it, `plan` the current preview or what was written. */
+  children: (ctx: { locked: boolean; stage: Stage["kind"]; usageError?: string; plan?: Plan }) => ReactNode;
 };
 
 /** One generator's sheet: the form on top, the preview under it, the flow's buttons in the footer, and what to do after apply. */
@@ -180,7 +181,7 @@ export function GeneratorSheet<N extends HubGenerator>({ name, open, onClose, in
   return (
     <Sheet open={open} onOpenChange={(o) => !o && !busy && onClose()} title={info.title} meta={meta ?? info.cli} description={info.blurb} width="lg" footer={footer}>
       <div className="grid min-w-0 gap-4">
-        {children({ locked, stage: stage.kind, usageError: error instanceof ApiError && error.status === 422 ? error.detail : undefined })}
+        {children({ locked, stage: stage.kind, usageError: error instanceof ApiError && error.status === 422 ? error.detail : undefined, plan })}
         {command && (
           <div className="grid gap-1.5">
             <div className="flex items-center justify-between">

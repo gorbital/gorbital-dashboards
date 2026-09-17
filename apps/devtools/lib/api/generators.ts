@@ -6,7 +6,9 @@
  * and `/apply` with the same envelope the Jobs screen uses
  * (`{"input": {…}, "allow_dirty": bool}`; `planJob`/`applyJob` in queries.ts).
  * The inputs are the CLI's flags with underscores: `resourceInputJSON`,
- * `migrationInputJSON`, `addMailInputJSON`, `addStorageInputJSON` in
+ * `migrationInputJSON`, `addMailInputJSON`, `addStorageInputJSON` (and
+ * `module`, `middleware` from v0.2 Phase 8: `lib/generators/module.ts`,
+ * `middleware.ts`) in
  * `cli/internal/cli/dev_portal.go` and `add_plans.go`; `add-rls` and
  * `add-orgs` take `{}`.
  */
@@ -14,6 +16,8 @@
 import { apiFetch } from "./client";
 import type { GeneratorRequest, GeneratorResponse, Plan } from "./types";
 import type { AddMailInput, AddStorageInput } from "@/lib/generators/add";
+import type { MiddlewareGeneratorInput } from "@/lib/generators/middleware";
+import type { ModuleGeneratorInput } from "@/lib/generators/module";
 import type { ResourceGeneratorInput } from "@/lib/generators/resource";
 
 export type MigrationGeneratorInput = { name: string };
@@ -21,6 +25,8 @@ export type MigrationGeneratorInput = { name: string };
 /** The input each generator takes; `job` has its own sheet on the Jobs page. */
 export type GeneratorInputs = {
   resource: ResourceGeneratorInput;
+  module: ModuleGeneratorInput;
+  middleware: MiddlewareGeneratorInput;
   migration: MigrationGeneratorInput;
   "add-mail": AddMailInput;
   "add-storage": AddStorageInput;

@@ -242,7 +242,7 @@ export const portalStatus: Status = {
     console: "http://127.0.0.1:8080/_dev/",
     grafana: "http://127.0.0.1:3000",
   },
-  generators: ["add-mail", "add-orgs", "add-rls", "add-storage", "job", "migration", "resource"],
+  generators: ["add-mail", "add-orgs", "add-rls", "add-storage", "job", "middleware", "migration", "module", "resource"],
 };
 
 /** The output tail, oldest first: orb's own messages and the app's log lines. */

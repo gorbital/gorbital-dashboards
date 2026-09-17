@@ -3,12 +3,14 @@ import { gateReason, generatorInfo, orderGenerators } from "./catalog";
 
 describe("generator catalog", () => {
   it("orders what the status lists and keeps unknown names", () => {
-    expect(orderGenerators(["add-mail", "add-orgs", "add-rls", "add-storage", "job", "migration", "resource"])).toEqual(["resource", "job", "migration", "add-mail", "add-storage", "add-orgs", "add-rls"]);
+    expect(orderGenerators(["add-mail", "add-orgs", "add-rls", "add-storage", "job", "middleware", "migration", "module", "resource"])).toEqual(["resource", "module", "middleware", "job", "migration", "add-mail", "add-storage", "add-orgs", "add-rls"]);
     expect(orderGenerators(["zeta", "job", "alpha"])).toEqual(["job", "alpha", "zeta"]);
   });
 
   it("describes unknown generators generically", () => {
-    expect(generatorInfo("module")).toMatchObject({ title: "module", cli: "orb gen module", needs: [] });
+    expect(generatorInfo("webhook")).toMatchObject({ title: "webhook", cli: "orb gen webhook", needs: [] });
+    expect(generatorInfo("module")).toMatchObject({ title: "Module", needs: ["database"], after: "migrate" });
+    expect(generatorInfo("middleware")).toMatchObject({ title: "Middleware", needs: [], after: "restart" });
     expect(generatorInfo("resource").needs).toEqual(["database"]);
   });
 

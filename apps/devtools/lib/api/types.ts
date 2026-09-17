@@ -77,7 +77,7 @@ export type Status = {
   project: Project;
   app: AppStatus;
   links: Partial<Record<LinkKey, string>> & Record<string, string>;
-  /** The generators this orb offers: `add-mail`, `add-orgs`, `add-rls`, `add-storage`, `job`, `migration`, `resource` (ADR-0077). */
+  /** The generators this orb offers: `add-mail`, `add-orgs`, `add-rls`, `add-storage`, `job`, `middleware`, `migration`, `module`, `resource` (ADR-0077; `module` and `middleware` from v0.2 Phase 8). */
   generators: string[];
 };
 
@@ -155,7 +155,7 @@ export type PortalEvent =
 
 /* ---------- Generators ---------- */
 
-export type GeneratorName = "job" | "resource" | "migration" | "add-mail" | "add-storage" | "add-rls" | "add-orgs";
+export type GeneratorName = "job" | "resource" | "module" | "middleware" | "migration" | "add-mail" | "add-storage" | "add-rls" | "add-orgs";
 
 export type GeneratorRequest<I extends object = Record<string, unknown>> = {
   /** The generator's fields, named like its CLI flags with underscores. */

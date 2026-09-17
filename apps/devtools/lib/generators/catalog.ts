@@ -36,6 +36,24 @@ export const GENERATOR_CATALOG: Record<GeneratorName, GeneratorInfo> = {
     needs: ["database"],
     after: "migrate",
   },
+  module: {
+    name: "module",
+    title: "Module",
+    blurb: "A layered module for apps on gorbital.Main: domain, use cases, repository and delivery, one file per operation, with tests and a migration.",
+    writes: ["internal/modules/<names>/ (domain, usecase, repository, delivery)", "one file per operation, and their tests", "db/migrations/<version>_<names>.sql", "internal/modules/modules.gen.go"],
+    cli: "orb gen module",
+    needs: ["database"],
+    after: "migrate",
+  },
+  middleware: {
+    name: "middleware",
+    title: "Middleware",
+    blurb: "Middleware for one module or the whole app, or a guard for single routes, with a test. You add the line that wires it.",
+    writes: ["internal/modules/<module>/delivery/<name>.go and its test", "or internal/middleware/<name>.go, for the whole app", "no edits to routes.go, module.go or main.go"],
+    cli: "orb gen middleware",
+    needs: [],
+    after: "restart",
+  },
   job: {
     name: "job",
     title: "Job",
@@ -110,7 +128,7 @@ export function generatorInfo(name: string): GeneratorInfo {
 
 /** The catalog's order for the cards: what the status lists, known ones first in this order, the rest after. */
 export function orderGenerators(names: string[]): string[] {
-  const order: string[] = ["resource", "job", "migration", "add-mail", "add-storage", "add-orgs", "add-rls"];
+  const order: string[] = ["resource", "module", "middleware", "job", "migration", "add-mail", "add-storage", "add-orgs", "add-rls"];
   return [...names].sort((a, b) => {
     const ia = order.indexOf(a);
     const ib = order.indexOf(b);

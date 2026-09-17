@@ -7,7 +7,8 @@ export type ShellVariant = "boxed" | "docked" | "rail";
 
 type Props = {
   product: ProductId;
-  version: string;
+  /** Shown next to the product name; a string, or a client component that knows the live version. */
+  version: ReactNode;
   /**
    * boxed: the whole dashboard inside one framed card, top bar across the top.
    * docked: sidebar and top bar as separate floating cards.
@@ -17,11 +18,17 @@ type Props = {
   /** The rendered <Nav>, from a client module in the app. */
   nav: ReactNode;
   /** The app under inspection. */
-  app: { name: string; env: string; ok?: boolean };
+  app: AppInfo;
+  /** Replaces the static app chip, e.g. with a client component that follows the live status. */
+  appChip?: ReactNode;
   user: { name: string; initials: string };
   searchHint: string;
+  /** Replaces the static search box, e.g. with a client component that opens the command palette. */
+  search?: ReactNode;
   children: ReactNode;
 };
+
+export type AppInfo = { name: string; env: string; ok?: boolean };
 
 export function Shell(props: Props) {
   if (props.variant === "boxed") return <Boxed {...props} />;
@@ -31,7 +38,7 @@ export function Shell(props: Props) {
 
 /* Pieces shared by the variants. */
 
-function Switcher({ product, version, compact }: { product: ProductId; version?: string; compact?: boolean }) {
+function Switcher({ product, version, compact }: { product: ProductId; version?: ReactNode; compact?: boolean }) {
   const p = products[product];
   const others = (Object.keys(products) as ProductId[]).filter((id) => id !== product);
   return (
@@ -63,9 +70,10 @@ function Switcher({ product, version, compact }: { product: ProductId; version?:
   );
 }
 
-function AppChip({ app, className = "" }: { app: Props["app"]; className?: string }) {
+/** The app under inspection: name, where it listens, and a dot that says whether it is up. */
+export function AppChip({ app, className = "" }: { app: AppInfo; className?: string }) {
   return (
-    <button className={`flex items-center gap-2.5 rounded-[10px] border border-border bg-elevated px-3 py-2 font-mono text-[12px] text-text hover:border-border-2 ${className}`}>
+    <button type="button" className={`flex items-center gap-2.5 rounded-[10px] border border-border bg-elevated px-3 py-2 font-mono text-[12px] text-text hover:border-border-2 ${className}`}>
       <i className={app.ok === false ? "h-2 w-2 rounded-full bg-danger" : "live-dot"} />
       <span className="truncate">{app.name}</span>
       <span className="ml-auto text-dim">{app.env}</span>
@@ -74,9 +82,10 @@ function AppChip({ app, className = "" }: { app: Props["app"]; className?: strin
   );
 }
 
-function SearchBox({ hint, className = "" }: { hint: string; className?: string }) {
+/** The static search box; `SearchButton` is the same look for a client component to wire up. */
+export function SearchButton({ hint, className = "", onClick }: { hint: string; className?: string; onClick?: () => void }) {
   return (
-    <button className={`flex h-9 items-center gap-2 rounded-lg border border-border bg-bg/60 px-3 text-[12px] text-dim hover:border-border-2 ${className}`}>
+    <button type="button" onClick={onClick} className={`flex h-9 items-center gap-2 rounded-lg border border-border bg-bg/60 px-3 text-[12px] text-dim hover:border-border-2 ${className}`}>
       <Search size={13} />
       <span className="truncate">{hint}</span>
       <kbd className="ml-auto">⌘K</kbd>
@@ -103,7 +112,7 @@ function BellButton() {
 }
 
 /* boxed: one framed card, the way a tool on the bench should feel. */
-function Boxed({ product, version, nav, app, user, searchHint, children }: Props) {
+function Boxed({ product, version, nav, app, appChip, user, searchHint, search, children }: Props) {
   const p = products[product];
   return (
     <div className="dotgrid min-h-screen bg-bg p-4">
@@ -111,8 +120,8 @@ function Boxed({ product, version, nav, app, user, searchHint, children }: Props
         <header className="flex h-14 shrink-0 items-center gap-4 border-b border-hairline px-4">
           <Switcher product={product} version={version} />
           <span className="h-5 w-px bg-hairline" />
-          <AppChip app={app} className="min-w-[220px] py-1.5" />
-          <SearchBox hint={searchHint} className="mx-auto w-[360px]" />
+          <div className="flex min-w-[220px] items-stretch">{appChip ?? <AppChip app={app} className="w-full py-1.5" />}</div>
+          <div className="mx-auto flex w-[360px] items-stretch">{search ?? <SearchButton hint={searchHint} className="w-full" />}</div>
           <BellButton />
           <Avatar user={user} withName />
         </header>
@@ -131,7 +140,7 @@ function Boxed({ product, version, nav, app, user, searchHint, children }: Props
 }
 
 /* docked: sidebar and top bar as two floating cards with a gap between. */
-function Docked({ product, version, nav, app, user, searchHint, children }: Props) {
+function Docked({ product, version, nav, app, appChip, user, searchHint, search, children }: Props) {
   const p = products[product];
   return (
     <div className="flex min-h-screen gap-4 bg-bg p-4">
@@ -139,7 +148,7 @@ function Docked({ product, version, nav, app, user, searchHint, children }: Prop
         <div className="px-1">
           <Switcher product={product} version={version} />
         </div>
-        <AppChip app={app} />
+        {appChip ?? <AppChip app={app} />}
         <div className="-mx-1 flex-1 overflow-y-auto px-1">{nav}</div>
         <div className="flex items-center gap-2.5 border-t border-hairline px-1 pt-4">
           <Avatar user={user} withName />
@@ -153,7 +162,7 @@ function Docked({ product, version, nav, app, user, searchHint, children }: Prop
             <span className="text-faint">›</span>
             <span className="text-text">{app.name}</span>
           </nav>
-          <SearchBox hint={searchHint} className="ml-6 w-[380px]" />
+          <div className="ml-6 flex w-[380px] items-stretch">{search ?? <SearchButton hint={searchHint} className="w-full" />}</div>
           <span className="ml-auto" />
           <BellButton />
           <Avatar user={user} />
@@ -165,7 +174,7 @@ function Docked({ product, version, nav, app, user, searchHint, children }: Prop
 }
 
 /* rail: icons only on the left, a pill of a top bar. */
-function Rail({ product, version, nav, app, user, searchHint, children }: Props) {
+function Rail({ product, version, nav, app, appChip, user, searchHint, search, children }: Props) {
   const p = products[product];
   return (
     <div className="flex min-h-screen gap-4 bg-bg p-4">
@@ -178,8 +187,8 @@ function Rail({ product, version, nav, app, user, searchHint, children }: Props)
         <header className="sticky top-4 z-20 flex h-14 shrink-0 items-center gap-3 rounded-full border border-hairline bg-surface/90 pl-5 pr-3 backdrop-blur">
           <span className="font-brand text-[15px] font-bold tracking-[-0.03em]">{p.name}</span>
           <span className="font-mono text-[11px] text-dim">{version}</span>
-          <AppChip app={app} className="ml-3 rounded-full py-1.5" />
-          <SearchBox hint={searchHint} className="ml-auto w-[360px] rounded-full" />
+          {appChip ?? <AppChip app={app} className="ml-3 rounded-full py-1.5" />}
+          <div className="ml-auto flex w-[360px] items-stretch">{search ?? <SearchButton hint={searchHint} className="w-full rounded-full" />}</div>
           <BellButton />
           <Avatar user={user} withName />
         </header>

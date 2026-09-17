@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Sparkline } from "../charts/sparkline";
 import { theme } from "../theme";
+import { Skeleton } from "./spinner";
 
 type Props = {
   label: string;
@@ -14,9 +15,11 @@ type Props = {
   hero?: boolean;
   icon?: ReactNode;
   footer?: ReactNode;
+  /** Shimmers in place of the value until the first data arrives. */
+  loading?: boolean;
 };
 
-export function Tile({ label, value, unit, delta, deltaTone = "good", spark, sparkColor, hero, icon, footer }: Props) {
+export function Tile({ label, value, unit, delta, deltaTone = "good", spark, sparkColor, hero, icon, footer, loading }: Props) {
   const deltaClass = deltaTone === "bad" ? "text-danger" : deltaTone === "flat" ? "text-dim" : "text-ok";
   return (
     <div className={`panel relative flex min-h-[112px] flex-col overflow-hidden p-4 ${hero ? "accent-wash" : ""}`}>
@@ -25,9 +28,15 @@ export function Tile({ label, value, unit, delta, deltaTone = "good", spark, spa
         {label}
       </div>
       <div className="mt-2 flex items-baseline gap-1.5">
-        <b className="text-[26px] font-semibold leading-none tracking-[-0.03em] tnum">{value}</b>
-        {unit && <span className="text-[12px] text-dim">{unit}</span>}
-        {delta && <span className={`ml-1 font-mono text-[11px] tnum ${deltaClass}`}>{delta}</span>}
+        {loading ? (
+          <Skeleton className="h-[22px] w-20" />
+        ) : (
+          <>
+            <b className="text-[26px] font-semibold leading-none tracking-[-0.03em] tnum">{value}</b>
+            {unit && <span className="text-[12px] text-dim">{unit}</span>}
+            {delta && <span className={`ml-1 font-mono text-[11px] tnum ${deltaClass}`}>{delta}</span>}
+          </>
+        )}
       </div>
       {footer && <div className="mt-auto pt-2 text-[11px] text-dim">{footer}</div>}
       {spark && (

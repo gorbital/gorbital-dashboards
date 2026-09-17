@@ -1,4 +1,28 @@
-import { rng, NOW, MIN, HOUR } from "@gorbital/dash/lib/rand";
+import { rng, NOW, MIN, HOUR, DAY } from "@gorbital/dash/lib/rand";
+import type {
+  AuditEvent,
+  CurrentRelease,
+  DevApp,
+  DevConfigList,
+  DevJobRunList,
+  DevLog,
+  DevLogList,
+  DevMail,
+  DevMigrations,
+  DevRequest,
+  DevRequestList,
+  DevRouteList,
+  JobDefinition,
+  JobRun,
+  MailStatus,
+  OpsSetting,
+  OpsSettingChange,
+  OutputLine,
+  Queue,
+  Status,
+  Suppression,
+  SystemInfo,
+} from "./api/types";
 
 export { NOW };
 const r = rng(1234);
@@ -184,3 +208,483 @@ export const slowQueries = [
 ];
 
 export const seedR = r;
+
+/* ---------- What orb dev's portal would answer, for mock mode ---------- */
+
+const iso = (ts: number) => new Date(ts).toISOString();
+
+/** GET /_portal/api/status as the mock transport first answers it; the mock supervisor mutates `app`. */
+export const portalStatus: Status = {
+  portal: { version: "1.3.0", ui: "bundled", started_at: iso(NOW - 3 * HOUR - 2 * MIN), database: true },
+  project: {
+    name: "acme-api",
+    module: "github.com/acme/acme-api",
+    preset: "full",
+    tenancy: "multi",
+    features: ["postgres", "auth", "orgs", "jobs", "mail", "settings", "flags", "audit", "releases", "ops"],
+    mail: "mailpit",
+    dir: "/Users/you/src/acme-api",
+    database: true,
+  },
+  app: {
+    state: "running",
+    pid: 48213,
+    addr: "127.0.0.1:8080",
+    url: "http://127.0.0.1:8080",
+    started_at: iso(NOW - 20 * MIN),
+    restarts: 3,
+    console: true,
+  },
+  links: {
+    api: "http://127.0.0.1:8080",
+    docs: "http://127.0.0.1:8080/docs",
+    mail: "http://127.0.0.1:8025",
+    console: "http://127.0.0.1:8080/_dev/",
+    grafana: "http://127.0.0.1:3000",
+  },
+  generators: ["add-mail", "add-orgs", "add-rls", "add-storage", "job", "migration", "resource"],
+};
+
+/** The output tail, oldest first: orb's own messages and the app's log lines. */
+export const outputLines: OutputLine[] = (
+  [
+    [-20 * MIN - 8000, "orb", "change detected: internal/projects/service.go"],
+    [-20 * MIN - 7900, "orb", "building… go build ./cmd/api"],
+    [-20 * MIN - 2100, "orb", "built in 5.8s"],
+    [-20 * MIN - 2000, "orb", "starting app (pid 48213) on 127.0.0.1:8080"],
+    [-20 * MIN - 1800, "app", 'level=INFO msg="config loaded" env=development'],
+    [-20 * MIN - 1780, "app", 'level=INFO msg="postgres connected" pool=10 db=acme_api_dev'],
+    [-20 * MIN - 1600, "app", 'level=INFO msg="migrations up to date" current=12 pending=1'],
+    [-20 * MIN - 1500, "app", 'level=INFO msg="river started" queues=3 workers=6'],
+    [-20 * MIN - 1400, "app", 'level=INFO msg="dev console on" endpoints=11'],
+    [-20 * MIN - 1200, "app", 'level=INFO msg="listening" addr=127.0.0.1:8080'],
+    [-20 * MIN - 1100, "orb", "ready · http://127.0.0.1:8080 · docs at /docs"],
+    [-19 * MIN, "app", 'level=INFO msg="http request" method=GET route="/readyz" status=200 duration=3.8ms'],
+    [-17 * MIN, "app", 'level=INFO msg="http request" method=POST route="/v1/auth/sign-in" status=200 duration=131ms request_id=req_2e9b1f'],
+    [-17 * MIN + 400, "app", 'level=INFO msg="job enqueued" kind=mail.send queue=mail'],
+    [-17 * MIN + 900, "app", 'level=INFO msg="job succeeded" kind=mail.send attempt=1 duration=402ms'],
+    [-15 * MIN, "app", 'level=INFO msg="http request" method=GET route="/v1/orgs/{org}/projects" status=200 duration=38ms request_id=req_71c0aa'],
+    [-12 * MIN, "app", 'level=WARN msg="slow query" duration=241ms route="GET /ops/audit/stats" hint="no index on audit_events(at)"'],
+    [-11 * MIN, "app", 'level=INFO msg="http request" method=GET route="/ops/audit/stats" status=200 duration=312ms request_id=req_c04d11'],
+    [-7 * MIN, "app", 'level=INFO msg="job succeeded" kind=sessions.prune pruned=3'],
+    [-4 * MIN, "app", 'level=INFO msg="job succeeded" kind=audit.rollup events=1204 buckets=16'],
+    [-2 * MIN, "app", 'level=INFO msg="http request" method=POST route="/v1/orgs/{org}/invites" status=201 duration=64ms request_id=req_9a12f0'],
+    [-2 * MIN + 500, "app", 'level=INFO msg="mail sent" template=invite to=ada@acme.dev'],
+  ] as const
+).map(([offset, stream, text]) => ({ time: iso(NOW + offset), stream, text }));
+
+/** Lines the mock stream emits, one every few seconds, in a loop. */
+export const liveOutputLines: { stream: "app" | "orb"; text: string }[] = [
+  { stream: "app", text: 'level=INFO msg="http request" method=GET route="/readyz" status=200 duration=2.9ms' },
+  { stream: "app", text: 'level=INFO msg="http request" method=GET route="/v1/me" status=200 duration=4.1ms request_id=req_b7e21c' },
+  { stream: "app", text: 'level=INFO msg="job succeeded" kind=audit.rollup events=88 buckets=4' },
+  { stream: "app", text: 'level=INFO msg="http request" method=GET route="/v1/orgs" status=200 duration=11ms request_id=req_44a0d9' },
+  { stream: "app", text: 'level=WARN msg="rate limited" route="POST /v1/auth/sign-in" ip=127.0.0.1' },
+  { stream: "orb", text: "watching 214 files in 31 packages" },
+];
+
+/** GET /_dev/app: what the app says about itself. */
+export const devApp: DevApp = {
+  name: "acme-api",
+  version: "0.4.2",
+  commit: "3f9a1c7",
+  go_version: "go1.25.1",
+  env: "development",
+  libraries: [
+    { path: "gorbital.dev/modules/auth", version: "v1.3.0" },
+    { path: "gorbital.dev/modules/orgs", version: "v1.3.0" },
+    { path: "gorbital.dev/modules/jobs", version: "v1.3.0" },
+    { path: "gorbital.dev/modules/mail", version: "v1.3.0" },
+    { path: "gorbital.dev/modules/settings", version: "v1.3.0" },
+    { path: "gorbital.dev/modules/devconsole", version: "v1.3.0", replaced: true },
+  ],
+  modules: Object.keys(moduleCounts),
+  jobs: jobDefs.map((d) => ({
+    name: d.name,
+    description: `${d.queue} queue · ${d.attempts} attempts`,
+    enabled: true,
+    schedule: d.schedule === "on demand" ? "" : d.schedule,
+    modified: d.name === "auth.lockout_after",
+    next_run_at: d.schedule === "on demand" ? undefined : iso(NOW + 6 * MIN),
+  })),
+  settings: settings.map((s) => ({
+    key: s.key,
+    group: s.key.split(".")[0],
+    description: `${s.type}${s.bounds ? ` · ${s.bounds}` : ""}`,
+    kind: s.type,
+    value: s.type === "int" ? Number(s.value) : s.type === "bool" ? s.value === "true" : s.value,
+    default: s.type === "int" ? Number(s.def) : s.type === "bool" ? s.def === "true" : s.def,
+    modified: s.value !== s.def,
+    org_overridable: s.key.startsWith("orgs.") || s.key.startsWith("projects."),
+  })),
+  flags: [
+    { key: "projects.search", group: "projects", description: "Full-text search over projects", client: true, enabled: false, default: false, percentage: null, targets: 0, modified: false },
+    { key: "orgs.sso", group: "orgs", description: "SAML sign-in for organisations", client: false, enabled: true, default: false, percentage: 25, targets: 2, modified: true },
+    { key: "mail.digest", group: "mail", description: "Weekly organisation digest", client: false, enabled: true, default: true, percentage: null, targets: 0, modified: false },
+  ],
+  permissions: [
+    {
+      name: "platform",
+      permissions: [
+        { name: "ops.read", description: "Read the ops API" },
+        { name: "ops.write", description: "Change settings, jobs and flags" },
+        { name: "ops.auth.read", description: "See accounts" },
+        { name: "ops.auth.write", description: "Change accounts" },
+      ],
+      roles: [
+        { name: "user", description: "Every account", permissions: [] },
+        { name: "platform_admin", description: "Every ops permission", permissions: ["ops.read", "ops.write", "ops.auth.read", "ops.auth.write"] },
+        { name: "ops_viewer", description: "Read the ops API", permissions: ["ops.read", "ops.auth.read"] },
+      ],
+    },
+    {
+      name: "org",
+      permissions: [
+        { name: "org.read", description: "See the organisation" },
+        { name: "org.members.invite", description: "Invite members" },
+        { name: "projects.write", description: "Create and edit projects" },
+        { name: "projects.delete", description: "Delete projects" },
+      ],
+      roles: [
+        { name: "viewer", description: "Read only", permissions: ["org.read"] },
+        { name: "editor", description: "Edit projects", permissions: ["org.read", "projects.write"] },
+        { name: "admin", description: "Everything", permissions: ["org.read", "org.members.invite", "projects.write", "projects.delete"] },
+      ],
+    },
+  ],
+};
+
+/** GET /_dev/routes, from the same routes the Routes page shows, plus the plain handlers outside OpenAPI. */
+export const devRoutes: DevRouteList = {
+  routes: [
+    ...routes.map((x) => ({ method: x.method, path: x.path, operation_id: x.op, summary: x.handler, tags: [x.module], secured: x.mw.includes("session"), source: "openapi" as const })),
+    { method: "GET", path: "/docs", tags: [], secured: false, source: "handler" as const },
+    { method: "GET", path: "/openapi.json", tags: [], secured: false, source: "handler" as const },
+    { method: "GET", path: "/.well-known/security.txt", tags: [], secured: false, source: "handler" as const },
+  ],
+};
+
+export const devConfig: DevConfigList = {
+  variables: [
+    { name: "APP_ENV", secret: false, set: true, value: "development" },
+    { name: "APP_ADDR", secret: false, set: true, value: "127.0.0.1:8080" },
+    { name: "APP_LOG_LEVEL", secret: false, set: true, value: "debug" },
+    { name: "DATABASE_URL", secret: true, set: true },
+    { name: "DEV_CONSOLE_TOKEN", secret: true, set: true },
+    { name: "MAIL_DELIVERY", secret: false, set: true, value: "devmail" },
+    { name: "DEV_MAIL_SMTP_ADDR", secret: false, set: true, value: "127.0.0.1:1025" },
+    { name: "MAILPIT_WEB_PORT", secret: false, set: true, value: "8025" },
+    { name: "OTEL_EXPORTER_OTLP_ENDPOINT", secret: false, set: false },
+    { name: "GITHUB_CLIENT_SECRET", secret: true, set: false },
+  ],
+};
+
+export const devMigrations: DevMigrations = { current: 12, latest: 13, pending: 1 };
+
+export const devRequests: DevRequestList = {
+  max: 500,
+  requests: [
+    { time: iso(NOW - 2 * MIN), method: "POST", route: "/v1/orgs/{org}/invites", path: "/v1/orgs/acme/invites", status: 201, duration_ms: 64.2, request_id: "req_9a12f0", trace_id: r.hex(32) },
+    { time: iso(NOW - 11 * MIN), method: "GET", route: "/ops/audit/stats", path: "/ops/audit/stats", status: 200, duration_ms: 312.4, request_id: "req_c04d11", trace_id: r.hex(32) },
+    { time: iso(NOW - 15 * MIN), method: "GET", route: "/v1/orgs/{org}/projects", path: "/v1/orgs/acme/projects", status: 200, duration_ms: 38.1, request_id: "req_71c0aa", trace_id: r.hex(32) },
+    { time: iso(NOW - 17 * MIN), method: "POST", route: "/v1/auth/sign-in", path: "/v1/auth/sign-in", status: 200, duration_ms: 131.0, request_id: "req_2e9b1f", trace_id: r.hex(32) },
+    { time: iso(NOW - 19 * MIN), method: "GET", route: "/readyz", path: "/readyz", status: 200, duration_ms: 3.8 },
+    { time: iso(NOW - 21 * MIN), method: "GET", route: "", path: "/favicon.ico", status: 404, duration_ms: 0.3 },
+  ],
+};
+
+export const devLogs: DevLogList = {
+  max: 1000,
+  logs: outputLines
+    .filter((l) => l.stream === "app")
+    .reverse()
+    .map((l) => {
+      const level = /level=(\w+)/.exec(l.text)?.[1] ?? "INFO";
+      const message = /msg="([^"]+)"/.exec(l.text)?.[1] ?? l.text;
+      const attrs = [...l.text.matchAll(/(\w+)=("[^"]*"|\S+)/g)].filter((m) => m[1] !== "level" && m[1] !== "msg").map((m) => ({ key: m[1], value: m[2].replace(/^"|"$/g, "") }));
+      return { time: l.time, level, message, attrs };
+    }),
+};
+
+export const devJobRuns: DevJobRunList = {
+  runs: jobRuns.map((j, i) => ({
+    id: 3114 - i,
+    kind: j.job,
+    queue: jobDefs.find((d) => d.name === j.job)?.queue ?? "default",
+    state: j.state === "failed" ? "discarded" : "completed",
+    attempt: j.state === "failed" ? 3 : 1,
+    max_attempts: j.state === "failed" ? 3 : jobDefs.find((d) => d.name === j.job)?.attempts ?? 3,
+    created_at: iso(j.at - j.ms - 200),
+    scheduled_at: iso(j.at - j.ms - 200),
+    attempted_at: iso(j.at - j.ms),
+    finalized_at: iso(j.at),
+    errors: j.state === "failed" ? ["context deadline exceeded", "context deadline exceeded", j.out] : [],
+    request_id: j.job === "mail.send" ? "req_2e9b1f" : undefined,
+  })),
+};
+
+export const devMail: DevMail = {
+  web_url: "http://127.0.0.1:8025",
+  total: outbox.length,
+  messages: outbox.map((m) => ({
+    id: m.id,
+    from: { name: "acme-api (dev)", address: "no-reply@acme.dev" },
+    to: [{ name: "", address: m.to }],
+    subject: m.subject,
+    snippet: `${m.template} · ${m.subject.slice(0, 40)}`,
+    created: iso(m.at),
+    size: Math.round(parseFloat(m.size) * 1024),
+    attachments: 0,
+    read: m.id !== "msg_01",
+  })),
+};
+
+/* ---------- What the app's /ops API would answer, for mock mode ---------- */
+
+const constraintsFor = (s: Setting): OpsSetting["constraints"] => {
+  if (!s.bounds) return s.type === "string" ? { max_len: 100 } : undefined;
+  const [lo, hi] = s.bounds.split(" – ");
+  return s.type === "duration" ? { min: `${lo.replace("h", "h0m0s")}`, max: `${hi.replace("h", "h0m0s")}` } : { min: Number(lo), max: Number(hi) };
+};
+
+const settingJSON = (s: Setting, v: string): unknown => (s.type === "int" ? Number(v) : s.type === "bool" ? v === "true" : s.type === "duration" ? v.replace(/h$/, "h0m0s") : v);
+
+/** GET /ops/settings: the same settings the dev console lists, with what the ops API adds (version, reason, constraints). */
+export const opsSettings: OpsSetting[] = settings.map((s) => ({
+  key: s.key,
+  kind: s.type === "url" ? "string" : s.type,
+  group: s.key.split(".")[0],
+  description: {
+    "auth.session_ttl": "Session lifetime without use.",
+    "auth.password_min_length": "Shortest password sign-up accepts.",
+    "auth.require_2fa_for_ops": "Every /ops request needs a second factor.",
+    "auth.lockout_after": "Failed sign-ins per address before a lockout.",
+    "orgs.invite_ttl": "Invitation link lifetime.",
+    "orgs.max_members_free": "Members an organisation may have on the free plan.",
+    "projects.max_per_org": "Projects one organisation may create.",
+    "mail.sender_name": "Sender name on every email, such as Acme.",
+    "mail.reply_to": "Where replies go; empty means the sender.",
+    "app.frontend_url": "Where links in email and invitations open.",
+    "app.maintenance": "Maintenance mode: every route but health checks, docs, sign-in and /ops answers 503.",
+    "ratelimit.sign_in_per_min": "Sign-in attempts per client IP per minute.",
+  }[s.key] ?? `Runtime setting ${s.key}.`,
+  value: settingJSON(s, s.value),
+  default: settingJSON(s, s.def),
+  modified: s.value !== s.def,
+  invalid_stored_value: false,
+  version: s.version - 1,
+  updated_at: s.changed ? iso(NOW - (s.key === "auth.lockout_after" ? 2 : 5) * DAY) : undefined,
+  updated_by: s.changed ? "usr_mfrggzdfmztwq2lk" : undefined,
+  reason_required: s.key.startsWith("auth.") || s.key.startsWith("mail.") || s.key === "app.maintenance",
+  restart_required: s.key === "app.frontend_url",
+  restart_pending: false,
+  constraints: constraintsFor(s),
+  org_overridable: s.key.startsWith("orgs.") || s.key.startsWith("projects."),
+}));
+
+/** GET /ops/settings/{key}/history, keyed by setting. */
+export const opsSettingHistory: Record<string, OpsSettingChange[]> = {
+  "auth.lockout_after": [
+    { id: 3, key: "auth.lockout_after", old_value: null, new_value: 8, version: 2, reason: "brute-force test", actor_kind: "user", actor_id: "usr_mfrggzdfmztwq2lk", request_id: "req_5c1e0b2a9d3f4e17", changed_at: iso(NOW - 2 * DAY) },
+    { id: 2, key: "auth.lockout_after", old_value: 8, new_value: null, version: 1, reason: "revert after test", actor_kind: "user", actor_id: "usr_mfrggzdfmztwq2lk", request_id: "req_1a2b3c4d5e6f7081", changed_at: iso(NOW - 3 * DAY) },
+    { id: 1, key: "auth.lockout_after", old_value: null, new_value: 8, version: 0, reason: "brute-force test", actor_kind: "user", actor_id: "usr_mfrggzdfmztwq2lk", changed_at: iso(NOW - 3 * DAY - 2 * HOUR) },
+  ],
+  "mail.sender_name": [{ id: 4, key: "mail.sender_name", old_value: null, new_value: "acme-api (dev)", version: 1, reason: "tell dev mail apart", actor_kind: "user", actor_id: "usr_mfrggzdfmztwq2lk", changed_at: iso(NOW - 5 * DAY) }],
+};
+
+const goTimeout = (t: string) => (t === "—" ? "1m0s" : t.replace(/^(\d+)m$/, "$1m0s"));
+
+const runOf = (id: number, kind: string, queue: string, state: JobRun["state"], at: number, ms: number, maxAttempts: number, errors?: string[]): JobRun => ({
+  id,
+  kind,
+  queue,
+  state,
+  attempt: errors ? errors.length : state === "completed" || state === "running" ? 1 : 0,
+  max_attempts: maxAttempts,
+  priority: 1,
+  created_at: iso(at - ms - 200),
+  scheduled_at: iso(at - ms - 200),
+  attempted_at: state === "scheduled" || state === "available" ? undefined : iso(at - ms),
+  finalized_at: state === "completed" || state === "discarded" || state === "cancelled" ? iso(at) : undefined,
+  errors: errors?.map((message, i) => ({ at: iso(at - (errors.length - i) * 60_000), attempt: i + 1, message })),
+  request_id: kind === "mail.send" ? "req_2e9b1f0c7a4d8e35" : undefined,
+});
+
+/** GET /ops/jobs/runs, newest first. */
+export const opsJobRuns: JobRun[] = [
+  runOf(3120, "audit.rollup", "default", "running", NOW - 8000, 8000, 3),
+  runOf(3119, "mail.send", "mail", "scheduled", NOW + 30_000, 0, 5),
+  runOf(3118, "mail.send", "mail", "completed", NOW - 2 * MIN, 391, 5),
+  runOf(3117, "audit.rollup", "default", "completed", NOW - 4 * MIN, 812, 3),
+  runOf(3116, "sessions.prune", "maintenance", "completed", NOW - 7 * MIN, 58, 3),
+  runOf(3115, "audit.rollup", "default", "completed", NOW - 19 * MIN, 790, 3),
+  runOf(3114, "mail.send", "mail", "completed", NOW - 22 * MIN, 402, 5),
+  runOf(3113, "invites.expire", "default", "retryable", NOW - 32 * MIN, 1200, 3, ["pq: deadlock detected"]),
+  runOf(3112, "audit.rollup", "default", "completed", NOW - 34 * MIN, 801, 3),
+  runOf(3111, "sessions.prune", "maintenance", "completed", NOW - 37 * MIN, 61, 3),
+  runOf(3110, "mail.send", "mail", "cancelled", NOW - 41 * MIN, 0, 5),
+  runOf(3109, "audit.rollup", "default", "completed", NOW - 49 * MIN, 822, 3),
+  runOf(3108, "projects.reindex", "default", "discarded", NOW - 3 * HOUR, 60_000, 3, ["context deadline exceeded", "context deadline exceeded", "context deadline exceeded after 60s (attempt 3/3)"]),
+  runOf(3107, "retention", "maintenance", "completed", NOW - 11 * HOUR, 4100, 3),
+  ...Array.from({ length: 18 }, (_, i) => runOf(3106 - i, i % 3 === 0 ? "sessions.prune" : "audit.rollup", i % 3 === 0 ? "maintenance" : "default", "completed", NOW - HOUR - i * 15 * MIN, 60 + i * 10, 3)),
+];
+
+/** GET /ops/jobs/definitions. */
+export const opsJobDefinitions: JobDefinition[] = jobDefs.map((d) => {
+  const config = { enabled: true, schedule: d.schedule === "on demand" ? "" : d.schedule, timeout: goTimeout(d.timeout), max_attempts: d.attempts, queue: d.queue, priority: 1 };
+  const modified = d.name === "sessions.prune";
+  return {
+    name: d.name,
+    description: {
+      "mail.send": "Delivers one email through the configured provider; enqueued by every module that sends mail.",
+      "sessions.prune": "Removes expired sessions and stale device records.",
+      retention: "Deletes audit events, history rows and instances past their retention.",
+      "audit.rollup": "Rolls audit events up into hourly buckets for /ops/audit/stats.",
+      "invites.expire": "Marks invitations past orgs.invite_ttl as expired.",
+      "projects.reindex": "Rebuilds the project search index for one organisation.",
+    }[d.name] ?? d.name,
+    config,
+    defaults: modified ? { ...config, schedule: "@every 5m" } : config,
+    modified,
+    invalid_override: false,
+    version: modified ? 1 : 0,
+    updated_at: modified ? iso(NOW - 6 * DAY) : undefined,
+    updated_by: modified ? "usr_mfrggzdfmztwq2lk" : undefined,
+    next_run_at: config.schedule ? iso(NOW + (d.name === "audit.rollup" ? 6 : d.name === "sessions.prune" ? 3 : 41) * MIN) : undefined,
+    last_run: opsJobRuns.find((r) => r.kind === d.name && r.state !== "scheduled"),
+  };
+});
+
+/** GET /ops/queues. */
+export const opsQueues: Queue[] = [
+  { name: "default", paused: false, created_at: iso(NOW - 30 * DAY), updated_at: iso(NOW - 20 * MIN) },
+  { name: "mail", paused: false, created_at: iso(NOW - 30 * DAY), updated_at: iso(NOW - 20 * MIN) },
+  { name: "maintenance", paused: false, created_at: iso(NOW - 30 * DAY), updated_at: iso(NOW - 20 * MIN) },
+];
+
+/** GET /ops/audit: 60 deterministic events over the last week, newest first. */
+const auditActions: [string, string, AuditEvent["outcome"]][] = [
+  ["auth.session.created", "session", "success"],
+  ["auth.login.failed", "user", "failure"],
+  ["auth.password.changed", "user", "success"],
+  ["orgs.member.invited", "invitation", "success"],
+  ["orgs.invitation.accepted", "invitation", "success"],
+  ["projects.project.created", "project", "success"],
+  ["projects.project.deleted", "project", "denied"],
+  ["settings.value.changed", "setting", "success"],
+  ["jobs.definition.run_requested", "job_definition", "success"],
+  ["jobs.queue.paused", "job_queue", "success"],
+  ["mail.test.requested", "mail", "success"],
+  ["auth.mfa.enabled", "user", "success"],
+];
+const actors = [
+  ["user", "usr_mfrggzdfmztwq2lk", "you@localhost"],
+  ["user", "usr_3f9a1c7b2d4e8f60", "ada@acme.dev"],
+  ["user", "usr_9b0e77a1c3d5f2e4", "grace@northwind.dev"],
+  ["service_account", "sa_ci_release_bot", "ci release bot"],
+  ["system", "", ""],
+] as const;
+const ar = rng(77);
+export const opsAuditEvents: AuditEvent[] = Array.from({ length: 60 }, (_, i) => {
+  const [action, resource, outcome] = auditActions[(i * 7) % auditActions.length];
+  const actor = action.startsWith("jobs.") && i % 2 ? actors[4] : actors[i % 4];
+  const at = NOW - i * 2.3 * HOUR - ar.int(0, 50) * MIN;
+  const id = 12_318 - i;
+  return {
+    id,
+    occurred_at: iso(at),
+    recorded_at: iso(at + 3),
+    actor_kind: actor[0],
+    actor_id: actor[1] || undefined,
+    actor_label: actor[2] || undefined,
+    action,
+    resource_type: resource,
+    resource_id: `${resource.slice(0, 3)}_${ar.hex(12)}`,
+    org_id: resource === "setting" || resource.startsWith("job") ? undefined : "org_acme",
+    outcome,
+    metadata: action === "settings.value.changed" ? { key: "auth.lockout_after", version: 2, reason: "brute-force test" } : action === "jobs.queue.paused" ? { reason: "deploy window" } : action === "auth.login.failed" ? { reason: "bad_password", attempts: 3 } : {},
+    request_id: actor[0] === "system" ? undefined : `req_${ar.hex(16)}`,
+    trace_id: actor[0] === "system" ? undefined : ar.hex(32),
+    ip: actor[0] === "user" ? `127.0.0.${1 + (i % 9)}` : undefined,
+    user_agent: actor[0] === "user" ? "Mozilla/5.0 (Macintosh) AppleWebKit/605.1.15 Safari/605.1.15" : undefined,
+  };
+});
+
+/** GET /ops/system: the instance that answers. */
+export const opsSystem: SystemInfo = {
+  instance: { id: "9b1c4d2e7f3a6b8c0d1e2f3a4b5c6d7e", version: "0.4.2", commit: "3f9a1c7b2d4e8f60a1b2c3d4e5f60718", build_time: iso(NOW - 25 * MIN), modified: true, started_at: iso(NOW - 20 * MIN), uptime_seconds: 20 * 60 },
+  checks: [
+    { name: "postgres", status: "ok", duration_ms: 1 },
+    { name: "river", status: "ok", duration_ms: 0 },
+    { name: "mail", status: "ok", duration_ms: 12 },
+  ],
+  database: {
+    status: "ok",
+    ping_ms: 1,
+    pool: { total: 5, idle: 3, in_use: 2, max: 10, acquires: 4812, average_acquire_ms: 0.42, empty_acquires: 6, canceled_acquires: 0 },
+    migrations: { current: devMigrations.current, latest: devMigrations.latest, pending: devMigrations.pending },
+  },
+  runtime: { go_version: "go1.25.1", gomaxprocs: 10, goroutines: 63, heap_in_use_bytes: 31_457_280, last_gc_pause_ms: 0.11, gcs: 14 },
+  jobs: { workers: 6, queues: ["default", "mail", "maintenance"] },
+};
+
+/** GET /ops/mail. */
+export const opsMail: MailStatus = {
+  provider: "smtp",
+  delivery: "devmail",
+  details: { host: "127.0.0.1", port: "1025", tls: "none", auth: "none" },
+  from_name: "acme-api (dev)",
+  from_email: "no-reply@acme.dev",
+  reply_to: "",
+};
+
+/** GET /ops/mail/suppressions. */
+export const opsSuppressions: Suppression[] = [
+  { id: 2, email: "bounced@example.net", reason: "bounce", source: "resend", detail: "550 5.1.1 user unknown", created_at: iso(NOW - 4 * DAY), updated_at: iso(NOW - 4 * DAY) },
+  { id: 1, email: "complainer@example.org", reason: "complaint", source: "resend", detail: "abuse report", created_at: iso(NOW - 12 * DAY), updated_at: iso(NOW - 9 * DAY) },
+];
+
+/** GET /ops/releases/current. */
+export const opsReleasesCurrent: CurrentRelease[] = [
+  {
+    version: "0.4.2",
+    commit: "3f9a1c7b2d4e8f60a1b2c3d4e5f60718",
+    instances: [
+      {
+        id: 27,
+        instance_id: opsSystem.instance.id,
+        version: "0.4.2",
+        commit: "3f9a1c7b2d4e8f60a1b2c3d4e5f60718",
+        build_time: iso(NOW - 25 * MIN),
+        modified: true,
+        go_version: "go1.25.1",
+        host: "your-mac.local",
+        started_at: iso(NOW - 20 * MIN),
+        last_seen_at: iso(NOW - 12_000),
+        running: true,
+      },
+    ],
+  },
+];
+
+/* ---------- What the dev console streams, in a loop ---------- */
+
+/** Requests the mock `/_dev/requests/stream` emits, one every few seconds; `time` is filled in as they go. */
+export const liveRequests: Omit<DevRequest, "time">[] = [
+  { method: "GET", route: "/readyz", path: "/readyz", status: 200, duration_ms: 2.9 },
+  { method: "GET", route: "/v1/me", path: "/v1/me", status: 200, duration_ms: 4.1, request_id: "req_b7e21c9d0f3a4b58", trace_id: "b7e21c9d0f3a4b58c6d7e8f90a1b2c3d" },
+  { method: "GET", route: "/v1/orgs", path: "/v1/orgs", status: 200, duration_ms: 11.4, request_id: "req_44a0d9e1f2b3c4d5", trace_id: "44a0d9e1f2b3c4d5e6f708192a3b4c5d" },
+  { method: "POST", route: "/v1/auth/sign-in", path: "/v1/auth/sign-in", status: 429, duration_ms: 0.8, request_id: "req_0c1d2e3f4a5b6c7d", trace_id: "0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f" },
+  { method: "GET", route: "/v1/orgs/{org}/projects", path: "/v1/orgs/acme/projects", status: 200, duration_ms: 36.2, request_id: "req_71c0aa2d3e4f5061", trace_id: "71c0aa2d3e4f5061728394a5b6c7d8e9" },
+  { method: "PATCH", route: "/v1/orgs/{org}/projects/{id}", path: "/v1/orgs/acme/projects/prj_4f2a1c", status: 500, duration_ms: 18.7, request_id: "req_e5f6a7b8c9d0e1f2", trace_id: "e5f6a7b8c9d0e1f2a3b4c5d6e7f80910" },
+];
+
+/** Log records the mock `/_dev/logs/stream` emits alongside the requests. */
+export const liveLogs: Omit<DevLog, "time">[] = [
+  { level: "INFO", message: "http request", attrs: [{ key: "method", value: "GET" }, { key: "route", value: "/readyz" }, { key: "status", value: "200" }, { key: "duration_ms", value: "3" }] },
+  { level: "INFO", message: "http request", attrs: [{ key: "method", value: "GET" }, { key: "route", value: "/v1/me" }, { key: "status", value: "200" }, { key: "duration_ms", value: "4" }, { key: "request_id", value: "req_b7e21c9d0f3a4b58" }, { key: "trace_id", value: "b7e21c9d0f3a4b58c6d7e8f90a1b2c3d" }] },
+  { level: "INFO", message: "job succeeded", attrs: [{ key: "kind", value: "audit.rollup" }, { key: "events", value: "88" }, { key: "buckets", value: "4" }, { key: "duration_ms", value: "790" }] },
+  { level: "WARN", message: "rate limited", attrs: [{ key: "route", value: "POST /v1/auth/sign-in" }, { key: "ip", value: "127.0.0.1" }, { key: "request_id", value: "req_0c1d2e3f4a5b6c7d" }] },
+  { level: "INFO", message: "http request", attrs: [{ key: "method", value: "GET" }, { key: "route", value: "/v1/orgs/{org}/projects" }, { key: "status", value: "200" }, { key: "duration_ms", value: "36" }, { key: "request_id", value: "req_71c0aa2d3e4f5061" }] },
+  { level: "ERROR", message: "handler panicked", attrs: [{ key: "route", value: "PATCH /v1/orgs/{org}/projects/{id}" }, { key: "panic", value: "runtime error: invalid memory address" }, { key: "request_id", value: "req_e5f6a7b8c9d0e1f2" }, { key: "trace_id", value: "e5f6a7b8c9d0e1f2a3b4c5d6e7f80910" }] },
+];

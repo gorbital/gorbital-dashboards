@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
@@ -8,8 +9,9 @@ export type NavItem = {
   label: string;
   href: string;
   icon: LucideIcon;
-  badge?: string | number;
-  tone?: "hot" | "accent";
+  badge?: ReactNode;
+  /** hot: red badge; accent: lime badge; live: a pulsing dot instead of the badge, for something running now. */
+  tone?: "hot" | "accent" | "live";
 };
 
 export type NavSection = { title?: string; items: NavItem[] };
@@ -44,8 +46,8 @@ export function Nav({ sections, style = "list" }: Props) {
                   }`}
                 >
                   <Icon size={17} strokeWidth={1.75} />
-                  {item.badge !== undefined && (
-                    <i className={`absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full ${item.tone === "hot" ? "bg-danger" : active ? "bg-bg" : "bg-primary"}`} />
+                  {(item.badge !== undefined || item.tone === "live") && (
+                    <i className={`absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full ${item.tone === "hot" ? "bg-danger" : item.tone === "live" ? "bg-ok" : active ? "bg-bg" : "bg-primary"}`} />
                   )}
                   <span className="pointer-events-none absolute left-full top-1/2 z-30 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg border border-border bg-elevated px-2.5 py-1.5 text-[12px] font-medium text-text opacity-0 shadow-xl shadow-black/40 transition-opacity group-hover:opacity-100">
                     {item.label}
@@ -82,10 +84,14 @@ export function Nav({ sections, style = "list" }: Props) {
                 {active && !caps && <i className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r bg-primary" />}
                 <Icon size={caps ? 14 : 15} strokeWidth={1.75} className={active ? "text-primary" : "text-dim group-hover:text-muted"} />
                 <span>{item.label}</span>
-                {item.badge !== undefined && (
-                  <span className={`ml-auto font-mono text-[11px] tnum normal-case tracking-normal ${item.tone === "hot" ? "text-danger" : item.tone === "accent" ? "text-primary" : "text-dim"}`}>
-                    {item.badge}
-                  </span>
+                {item.tone === "live" ? (
+                  <i className="live-dot ml-auto" aria-label="running" />
+                ) : (
+                  item.badge !== undefined && (
+                    <span className={`ml-auto font-mono text-[11px] tnum normal-case tracking-normal ${item.tone === "hot" ? "text-danger" : item.tone === "accent" ? "text-primary" : "text-dim"}`}>
+                      {item.badge}
+                    </span>
+                  )
                 )}
               </Link>
             );

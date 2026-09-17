@@ -1,0 +1,191 @@
+/*
+ * React Flow in the theme's tokens, scoped to the schema diagram. The
+ * library reads its `--xy-*-default` variables from `.react-flow`; every
+ * colour here is a theme token (theme.css) so the canvas, nodes, edges,
+ * controls and the mini map match the rest of the portal.
+ */
+.schema-flow .react-flow {
+  --xy-background-color-default: var(--color-bg);
+  --xy-background-pattern-dots-color-default: var(--color-border);
+  --xy-background-pattern-lines-color-default: var(--color-hairline);
+  --xy-background-pattern-cross-color-default: var(--color-hairline);
+
+  --xy-node-color-default: var(--color-text);
+  --xy-node-border-default: none;
+  --xy-node-background-color-default: transparent;
+  --xy-node-border-radius-default: 10px;
+  --xy-node-boxshadow-hover-default: none;
+  --xy-node-boxshadow-selected-default: none;
+
+  --xy-edge-stroke-default: var(--color-border-2);
+  --xy-edge-stroke-width-default: 1.25;
+  --xy-edge-stroke-selected-default: var(--color-primary);
+  --xy-edge-label-background-color-default: var(--color-elevated);
+  --xy-edge-label-color-default: var(--color-text);
+
+  --xy-handle-background-color-default: var(--color-border-2);
+  --xy-handle-border-color-default: var(--color-surface);
+
+  --xy-selection-background-color-default: rgba(198, 242, 74, 0.08);
+  --xy-selection-border-default: 1px dashed var(--color-primary);
+
+  --xy-controls-button-background-color-default: var(--color-surface);
+  --xy-controls-button-background-color-hover-default: var(--color-elevated);
+  --xy-controls-button-color-default: var(--color-muted);
+  --xy-controls-button-color-hover-default: var(--color-text);
+  --xy-controls-button-border-color-default: var(--color-border);
+  --xy-controls-box-shadow-default: none;
+
+  --xy-minimap-background-color-default: var(--color-surface);
+  --xy-minimap-mask-background-color-default: rgba(11, 12, 10, 0.55);
+  --xy-minimap-mask-stroke-color-default: var(--color-border);
+  --xy-minimap-node-background-color-default: var(--color-raised);
+  --xy-minimap-node-stroke-color-default: var(--color-border-2);
+  --xy-minimap-node-stroke-width-default: 1;
+
+  --xy-attribution-background-color-default: transparent;
+}
+
+.schema-flow .react-flow__attribution {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--color-faint);
+}
+.schema-flow .react-flow__attribution a {
+  color: var(--color-faint);
+}
+
+.schema-flow .react-flow__controls {
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+.schema-flow .react-flow__controls-button {
+  width: 26px;
+  height: 26px;
+  border-bottom: 1px solid var(--color-hairline);
+}
+.schema-flow .react-flow__controls-button svg {
+  fill: currentColor;
+  max-width: 11px;
+  max-height: 11px;
+}
+.schema-flow .react-flow__minimap {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* The table node. */
+.schema-flow .table-node {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 11.5px;
+  line-height: 1;
+  overflow: hidden;
+  transition:
+    border-color 120ms ease,
+    opacity 160ms ease,
+    box-shadow 120ms ease;
+}
+.schema-flow .table-node--hot {
+  border-color: var(--color-primary-mid);
+  box-shadow: 0 0 0 3px rgba(198, 242, 74, 0.1);
+}
+.schema-flow .table-node--selected,
+.schema-flow .react-flow__node.selected .table-node {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(198, 242, 74, 0.16);
+}
+.schema-flow .table-node--dim {
+  opacity: 0.28;
+}
+.schema-flow .table-node__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 10px;
+  background: var(--color-elevated);
+  border-bottom: 1px solid var(--color-hairline);
+  cursor: grab;
+}
+.schema-flow .react-flow__node.dragging .table-node__header {
+  cursor: grabbing;
+}
+.schema-flow .table-node__rows {
+  padding: 3px 0;
+}
+.schema-flow .table-node__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+.schema-flow .table-node__row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.schema-flow .table-node__icon {
+  display: grid;
+  width: 11px;
+  place-items: center;
+  flex-shrink: 0;
+}
+.schema-flow .table-node__type {
+  margin-left: auto;
+  padding-left: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 45%;
+  font-size: 10px;
+  color: var(--color-dim);
+}
+
+/* Handles: a 5 px dot at the row's edge, invisible when nothing connects there. */
+.schema-flow .react-flow__handle {
+  width: 5px;
+  height: 5px;
+  min-width: 0;
+  min-height: 0;
+  border-width: 1px;
+  pointer-events: none;
+}
+.schema-flow .react-flow__handle-left {
+  left: -3px;
+}
+.schema-flow .react-flow__handle-right {
+  right: -3px;
+}
+.schema-flow .react-flow__handle.handle--idle {
+  opacity: 0;
+}
+
+/* Edges: hot when hovered or when either table is; cold while something else is. */
+.schema-flow .react-flow__edge {
+  transition: opacity 160ms ease;
+}
+.schema-flow .react-flow__edge .react-flow__edge-path {
+  transition:
+    stroke 120ms ease,
+    stroke-width 120ms ease;
+}
+.schema-flow .react-flow__edge.edge--hot .react-flow__edge-path,
+.schema-flow .react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--color-primary);
+  stroke-width: 2;
+}
+.schema-flow .react-flow__edge.edge--cold {
+  opacity: 0.18;
+}
+.schema-flow .react-flow__edge-text {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  fill: var(--color-text);
+}
+.schema-flow .react-flow__edge-textbg {
+  fill: var(--color-elevated);
+}

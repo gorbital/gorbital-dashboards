@@ -3,25 +3,35 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3100",
+    "dev": "next dev -p 3101",
     "build": "next build",
-    "start": "npx serve out -l 3100",
-    "typecheck": "tsc --noEmit"
+    "start": "npx serve out -l 3101",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@dagrejs/dagre": "^3.1.1",
     "@gorbital/dash": "workspace:*",
+    "@tanstack/react-query": "^5.103.1",
+    "@xyflow/react": "^12.11.6",
+    "html-to-image": "^1.11.13",
     "lucide-react": "^1.46.0",
     "next": "^16.3.5",
+    "papaparse": "^5.7.0",
+    "radix-ui": "^1.6.7",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "sql-formatter": "^15.8.2"
   },
   "devDependencies": {
     "@gorbital/tsconfig": "workspace:*",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^22",
+    "@types/papaparse": "^5.5.2",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "tailwindcss": "^4.3.3",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^5.0.1"
   }
 }

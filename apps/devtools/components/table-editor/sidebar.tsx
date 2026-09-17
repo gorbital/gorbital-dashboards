@@ -35,7 +35,7 @@ export function Sidebar({ schema, table, onSchema, onTable, onNewTable }: Props)
   }, [tables.data, q]);
 
   return (
-    <aside className="flex w-[312px] shrink-0 flex-col overflow-hidden border-r border-hairline bg-bg/30">
+    <aside className="flex w-[328px] shrink-0 flex-col overflow-hidden border-r border-hairline bg-bg/30">
       <div className="grid gap-2 border-b border-hairline p-3">
         <div className="flex items-center gap-2">
           <Select value={current ?? ""} onChange={(e) => onSchema(e.target.value)} aria-label="Schema" disabled={!visibleSchemas.length}>

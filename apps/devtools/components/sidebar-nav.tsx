@@ -1,9 +1,10 @@
 "use client";
 
-import { Activity, Boxes, Database, FileKey2, FolderOpen, GitBranch, GitCommitHorizontal, KeyRound, LayoutDashboard, ListOrdered, Mail, Route, ScrollText, Settings, ShieldCheck, SlidersHorizontal, Table2, TerminalSquare, Wand2, Waypoints, Zap } from "lucide-react";
+import { Activity, Boxes, Database, FileKey2, FolderOpen, GitBranch, GitCommitHorizontal, Globe, KeyRound, LayoutDashboard, ListOrdered, Mail, Route, ScrollText, Settings, ShieldCheck, SlidersHorizontal, Table2, TerminalSquare, Wand2, Waypoints, Zap } from "lucide-react";
 import { Nav, type NavSection } from "@gorbital/dash/components/nav";
 import { Tooltip } from "@gorbital/dash/components/tooltip";
 import { isNoMailCatcher, useInbox } from "@/lib/api/mail";
+import { useTunnel } from "@/lib/api/tunnel";
 import { useCapabilities, useDevMail, useDevMigrations, useDevRoutes } from "@/lib/api/queries";
 
 /** The nav; badges carry live counts where one request buys them: routes, caught mail (orb dev's inbox, or Mailpit's without a catcher), pending migrations. */
@@ -16,6 +17,8 @@ export function SidebarNav() {
   const caught = inbox.data ? inbox.data.count : mail.data ? mail.data.total : undefined;
   const pending = migrations.data?.pending ?? 0;
   const noDatabase = status.data?.portal.database === false;
+  const tunnel = useTunnel();
+  const tunnelLive = tunnel.data?.status.state === "connected";
   const sections: NavSection[] = [
     {
       title: "Overview",
@@ -40,6 +43,7 @@ export function SidebarNav() {
         { label: "Settings", href: "/settings", icon: SlidersHorizontal },
         { label: "Environment", href: "/environment", icon: FileKey2 },
         { label: "Authentication", href: "/auth", icon: KeyRound },
+        { label: "Tunnel", href: "/tunnel", icon: Globe, tone: tunnelLive ? "live" : undefined },
         { label: "Database", href: "/database", icon: Database, badge: pending > 0 ? `${pending} pending` : undefined, tone: pending > 0 ? "hot" : undefined },
         { label: "Storage", href: "/storage", icon: FolderOpen },
         { label: "Git", href: "/git", icon: GitBranch },

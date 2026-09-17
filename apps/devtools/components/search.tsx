@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Boxes, Database, FileKey2, FolderOpen, GitBranch, KeyRound, LayoutDashboard, ListOrdered, Mail, Play, RotateCw, Route, ScrollText, Settings, ShieldCheck, SlidersHorizontal, Square, Wand2, Zap } from "lucide-react";
+import { Activity, Boxes, Database, FileKey2, FolderOpen, GitBranch, Globe, KeyRound, LayoutDashboard, ListOrdered, Mail, Play, RotateCw, Route, ScrollText, Settings, ShieldCheck, SlidersHorizontal, Square, Wand2, Zap } from "lucide-react";
 import { CommandPalette, type CommandItem } from "@gorbital/dash/components/command";
 import { useAppAction, useCapabilities, useDevRoutes } from "@/lib/api/queries";
 
@@ -19,6 +19,7 @@ const pages: CommandItem[] = [
   { id: "page:flags", label: "Feature flags", hint: "/settings?tab=flags", href: "/settings?tab=flags", icon: <SlidersHorizontal size={13} />, group: "Pages", keywords: ["rollout", "percentage", "targets"] },
   { id: "page:environment", label: "Environment", hint: "/environment", href: "/environment", icon: <FileKey2 size={13} />, group: "Pages", keywords: [".env", "env", "variables", "secrets", "configuration"] },
   { id: "page:auth", label: "Authentication", hint: "/auth", href: "/auth", icon: <KeyRound size={13} />, group: "Pages", keywords: ["users", "accounts", "sessions", "providers", "rate limits"] },
+  { id: "page:tunnel", label: "Tunnel", hint: "/tunnel", href: "/tunnel", icon: <Globe size={13} />, group: "Pages", keywords: ["cloudflared", "cloudflare", "public url", "https", "webhooks", "callbacks", "phone", "expose"] },
   { id: "page:database", label: "Database", hint: "/database", href: "/database", icon: <Database size={13} />, group: "Pages" },
   { id: "page:storage", label: "Storage", hint: "/storage", href: "/storage", icon: <FolderOpen size={13} />, group: "Pages", keywords: ["files", "bucket", "objects", "upload", "signed url", "s3"] },
   { id: "page:git", label: "Git", hint: "/git", href: "/git", icon: <GitBranch size={13} />, group: "Pages", keywords: ["commit", "branch", "diff", "stage", "push", "pull", "merge", "history", "log"] },

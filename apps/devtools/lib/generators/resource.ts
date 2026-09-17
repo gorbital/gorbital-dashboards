@@ -15,8 +15,10 @@ export type ResourceField = {
   type: FieldType;
   /** Comma-separated enum values (2 to 20, snake_case, up to 30 characters each). */
   values: string;
-  /** Unique among each owner's records, ignoring case; string fields only. */
+  /** Unique among each owner's records, ignoring case; required string fields only. */
   unique: boolean;
+  /** `string?`: may be empty (0 to 100 characters); the module generator only, and never unique. */
+  optional?: boolean;
 };
 
 export type ResourceScope = "user" | "org";
@@ -82,7 +84,50 @@ export function defaultResourceForm(scope: ResourceScope = "user"): ResourceForm
 export function fieldSpec(f: ResourceField): string {
   const name = f.name.trim();
   if (f.type === "enum") return `${name}:enum(${enumValues(f.values).join(",")})`;
+  if (f.type === "string" && f.optional) return `${name}:string?`;
   return `${name}:${f.type}${f.unique && f.type === "string" ? ":unique" : ""}`;
+}
+
+/**
+ * Reads one spec as the CLI takes it (`name:string:unique`, `nickname:string?`,
+ * `notes:text`, `status:enum(open,done)`) into the editor's row; the error
+ * says what's wrong with the spec's shape. The row itself is checked by
+ * `validateField`.
+ */
+export function parseFieldSpec(spec: string): { field: ResourceField } | { error: string } {
+  const s = spec.trim();
+  const i = s.indexOf(":");
+  if (i <= 0 || i === s.length - 1) return { error: `field "${s}": write it as name:type, such as title:string, notes:text or status:enum(open,closed)` };
+  const name = s.slice(0, i);
+  const rest = s.slice(i + 1);
+  if (rest.startsWith("enum(")) {
+    const close = rest.indexOf(")");
+    if (close < 0) return { error: `field ${name}: close the values, such as ${name}:enum(open,closed)` };
+    if (rest.slice(close + 1)) return { error: `field ${name}: unexpected "${rest.slice(close + 1)}" after the type` };
+    return { field: { name, type: "enum", values: rest.slice(5, close).split(",").map((v) => v.trim()).join(", "), unique: false } };
+  }
+  const [kind, ...options] = rest.split(":");
+  const optional = kind === "string?";
+  const type = optional ? "string" : kind;
+  if (type !== "string" && type !== "text") return { error: `field ${name}: type must be string, string?, text or enum(a,b), got "${kind}"` };
+  let unique = false;
+  for (const o of options) {
+    if (o !== "unique") return { error: `field ${name}: unknown option "${o}" (want unique)` };
+    if (type !== "string" || optional) return { error: `field ${name}: only required string fields can be unique` };
+    unique = true;
+  }
+  return { field: { name, type, values: "", unique, ...(optional ? { optional: true } : {}) } };
+}
+
+/** Several specs, separated by spaces or new lines (enum values keep their commas); the first error stops it. */
+export function parseFieldSpecs(text: string): { fields: ResourceField[] } | { error: string } {
+  const fields: ResourceField[] = [];
+  for (const spec of text.split(/\s+/).filter(Boolean)) {
+    const r = parseFieldSpec(spec.replace(/^'|'$/g, ""));
+    if ("error" in r) return r;
+    fields.push(r.field);
+  }
+  return { fields };
 }
 
 /** The enum values as typed, trimmed, empty ones dropped. */
@@ -165,6 +210,7 @@ export function validateField(f: ResourceField): string | undefined {
     }
   }
   if (f.unique && f.type !== "string") return `field ${name}: only string fields can be unique`;
+  if (f.unique && f.optional) return `field ${name}: an optional string can't be unique`;
   return undefined;
 }
 

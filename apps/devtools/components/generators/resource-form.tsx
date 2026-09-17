@@ -1,11 +1,9 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
-import { Badge } from "@gorbital/dash/components/badge";
-import { Button } from "@gorbital/dash/components/button";
-import { Checkbox, Field, Input, Select } from "@gorbital/dash/components/input";
+import { Field, Input } from "@gorbital/dash/components/input";
 import { Segmented } from "@gorbital/dash/components/pill";
-import { FIELD_TYPES, MAX_FIELDS, emptyField, resourceNames, type ResourceErrors, type ResourceField, type ResourceForm } from "@/lib/generators/resource";
+import { resourceNames, type ResourceErrors, type ResourceForm } from "@/lib/generators/resource";
+import { FieldsEditor } from "./fields-editor";
 
 type Props = {
   form: ResourceForm;
@@ -24,7 +22,6 @@ type Props = {
 export function ResourceFormFields({ form, onChange, errors, touched, tenancy, locked, serverError }: Props) {
   const names = resourceNames(form.name || "Resource", form.plural, form.idPrefix);
   const set = <K extends keyof ResourceForm>(key: K, value: ResourceForm[K]) => onChange({ ...form, [key]: value });
-  const setField = (i: number, patch: Partial<ResourceField>) => set("fields", form.fields.map((f, j) => (j === i ? { ...f, ...patch } : f)));
   const err = (key: keyof ResourceErrors) => (touched ? (errors[key] as string | undefined) : undefined);
   const multi = tenancy === "multi";
   return (
@@ -45,58 +42,16 @@ export function ResourceFormFields({ form, onChange, errors, touched, tenancy, l
         </Field>
       </div>
 
-      <div className="grid gap-2 rounded-lg border border-hairline bg-bg/40 p-3">
-        <div className="flex items-center justify-between">
-          <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-dim">Fields</div>
-          <Button size="sm" kind="ghost" icon={<Plus size={11} />} onClick={() => set("fields", [...form.fields, emptyField()])} disabled={locked || form.fields.length >= MAX_FIELDS}>
-            Add field
-          </Button>
-        </div>
-        {form.fields.length === 0 && <div className="text-[11.5px] text-muted">A resource needs at least one string field; the first one is its title, which lists sort by.</div>}
-        {form.fields.map((f, i) => {
-          const rowError = touched ? errors.fieldRows?.[i] : undefined;
-          const type = FIELD_TYPES.find((t) => t.value === f.type);
-          return (
-            <div key={i} className="grid gap-1">
-              <div className="grid grid-cols-[minmax(0,1.2fr)_110px_minmax(0,1.4fr)_auto_auto] items-center gap-2">
-                <Input mono value={f.name} onChange={(e) => setField(i, { name: e.target.value })} placeholder={i === 0 ? "name" : "notes"} aria-label={`Field ${i + 1} name`} disabled={locked} />
-                <Select value={f.type} onChange={(e) => setField(i, { type: e.target.value as ResourceField["type"], unique: e.target.value === "string" ? f.unique : false })} aria-label={`Field ${i + 1} type`} disabled={locked}>
-                  {FIELD_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </Select>
-                {f.type === "enum" ? (
-                  <Input mono value={f.values} onChange={(e) => setField(i, { values: e.target.value })} placeholder="active, archived" aria-label={`Field ${i + 1} values`} disabled={locked} />
-                ) : (
-                  <span className="truncate text-[11px] text-dim">{type?.hint}</span>
-                )}
-                <label className={`flex items-center gap-1.5 text-[11px] ${f.type === "string" ? "text-muted" : "text-faint"}`}>
-                  <Checkbox checked={f.unique} onCheckedChange={(v) => setField(i, { unique: v === true })} disabled={locked || f.type !== "string"} aria-label={`Field ${i + 1} unique`} />
-                  unique
-                </label>
-                <Button size="sm" kind="ghost" icon={<Trash2 size={11} />} onClick={() => set("fields", form.fields.filter((_, j) => j !== i))} disabled={locked} aria-label={`Remove field ${i + 1}`}>
-                  <span className="sr-only">Remove</span>
-                </Button>
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5 pl-0.5">
-                {f.type === "string" && i === form.fields.findIndex((x) => x.type === "string") && <Badge tone="accent">title · lists sort by it</Badge>}
-                {f.type === "string" && <Badge tone="muted">required</Badge>}
-                {f.type === "text" && <Badge tone="muted">optional</Badge>}
-                {f.type === "enum" && <Badge tone="muted">filterable · default: first value</Badge>}
-                {f.unique && f.type === "string" && <Badge tone="info">409 {names.snake}_{f.name || "field"}_taken</Badge>}
-                {rowError && <span className="text-[11px] text-danger">{rowError}</span>}
-              </div>
-            </div>
-          );
-        })}
-        {err("fields") && <div className="text-[11px] text-danger">{errors.fields}</div>}
-        {serverError && /^field /.test(serverError) && <div className="text-[11px] text-danger">{serverError}</div>}
-        <div className="text-[11px] text-dim">
-          Names are snake_case (max 20). string: 1–100 characters, required, sortable, can be unique per owner ignoring case. text: up to 2000 characters, optional. enum: 2–20 snake_case values, the first is the default.
-        </div>
-      </div>
+      <FieldsEditor
+        fields={form.fields}
+        onChange={(fields) => set("fields", fields)}
+        locked={locked}
+        rowErrors={touched ? errors.fieldRows : undefined}
+        listError={err("fields")}
+        serverError={serverError}
+        snake={names.snake}
+        rules="Names are snake_case (max 20). string: 1–100 characters, required, sortable, can be unique per owner ignoring case. text: up to 2000 characters, optional. enum: 2–20 snake_case values, the first is the default."
+      />
 
       <div className="grid grid-cols-2 gap-2">
         <Field label="Plural" htmlFor="rs-plural" hint={`default ${names.plural}: the package, table and route come from it`} error={err("plural") ?? (serverError?.includes("plural") ? serverError : undefined)}>

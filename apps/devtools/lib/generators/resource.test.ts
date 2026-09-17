@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultResourceForm, deriveIDPrefix, fieldSpec, pluralize, resourceNames, toResourceCommand, toResourceInput, validateField, validateResourceForm, type ResourceField } from "./resource";
+import { defaultResourceForm, deriveIDPrefix, fieldSpec, parseFieldSpec, parseFieldSpecs, pluralize, resourceNames, toResourceCommand, toResourceInput, validateField, validateResourceForm, type ResourceField } from "./resource";
 
 const field = (over: Partial<ResourceField>): ResourceField => ({ name: "title", type: "string", values: "", unique: false, ...over });
 
@@ -89,5 +89,37 @@ describe("input and command", () => {
     const f = { ...defaultResourceForm(), name: "Note", fields: [field({ name: "title", unique: true }), field({ name: "status", type: "enum", values: "open,done" })] };
     expect(toResourceCommand(f)).toBe("orb gen resource Note title:string:unique 'status:enum(open,done)' --scope user");
     expect(toResourceCommand({ ...f, plural: "Notes" }, true)).toBe("orb gen resource Note title:string:unique 'status:enum(open,done)' --plural Notes --scope user --allow-dirty");
+  });
+});
+
+describe("optional strings and parsing specs", () => {
+  it("writes string? for an optional string and never unique", () => {
+    expect(fieldSpec(field({ name: "nickname", optional: true }))).toBe("nickname:string?");
+    expect(fieldSpec(field({ name: "nickname", optional: true, unique: true }))).toBe("nickname:string?");
+    expect(validateField(field({ name: "nickname", optional: true, unique: true }))).toMatch(/can't be unique/);
+    expect(validateField(field({ name: "nickname", optional: true }))).toBeUndefined();
+  });
+
+  it("parses every spec the CLI takes", () => {
+    expect(parseFieldSpec("name:string:unique")).toEqual({ field: { name: "name", type: "string", values: "", unique: true } });
+    expect(parseFieldSpec("nickname:string?")).toEqual({ field: { name: "nickname", type: "string", values: "", unique: false, optional: true } });
+    expect(parseFieldSpec("description:text")).toEqual({ field: { name: "description", type: "text", values: "", unique: false } });
+    expect(parseFieldSpec("visibility:enum(private,shared)")).toEqual({ field: { name: "visibility", type: "enum", values: "private, shared", unique: false } });
+  });
+
+  it("refuses malformed specs", () => {
+    expect(parseFieldSpec("name")).toMatchObject({ error: expect.stringMatching(/name:type/) });
+    expect(parseFieldSpec("nickname:string?:unique")).toMatchObject({ error: expect.stringMatching(/only required string fields can be unique/) });
+    expect(parseFieldSpec("notes:text:unique")).toMatchObject({ error: expect.stringMatching(/only required string fields/) });
+    expect(parseFieldSpec("age:int")).toMatchObject({ error: expect.stringMatching(/string, string\?, text or enum/) });
+    expect(parseFieldSpec("status:enum(open,done")).toMatchObject({ error: expect.stringMatching(/close the values/) });
+    expect(parseFieldSpec("name:string:primary")).toMatchObject({ error: expect.stringMatching(/unknown option/) });
+  });
+
+  it("round-trips specs through the editor's rows", () => {
+    const specs = ["name:string:unique", "description:text", "visibility:enum(private,shared)", "nickname:string?"];
+    const parsed = parseFieldSpecs(specs.map((s) => `'${s}'`).join(" \n"));
+    expect("fields" in parsed && parsed.fields.map(fieldSpec)).toEqual(specs);
+    expect(parseFieldSpecs("name:string bad")).toMatchObject({ error: expect.stringMatching(/bad/) });
   });
 });

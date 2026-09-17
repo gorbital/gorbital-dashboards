@@ -4,7 +4,8 @@
  * The client-only half of `monaco.tsx`. Imports Monaco from the package
  * (the editor API, the contributions the SQL editor needs, the pgsql
  * language) instead of letting `@monaco-editor/react` fetch it from a CDN,
- * gives it the theme built from the design tokens, and registers the pgsql
+ * gives it the two themes built from the design tokens (dark and light,
+ * switched with the page's data-theme), and registers the pgsql
  * completion provider fed by the catalog the page passes in.
  */
 import * as monaco from "monaco-editor/editor/editor.api";
@@ -34,7 +35,8 @@ import { Editor, loader, type Monaco } from "@monaco-editor/react";
 import { useEffect, useRef } from "react";
 import { EditorSkeleton, type EditorHandle, type MonacoEditorProps, type SqlCatalog } from "./monaco";
 import { SQL_FUNCTIONS, SQL_KEYWORDS, mentionedTables, resolveQualifier, tableInsertText, tableKey } from "./monaco-sql";
-import { MONACO_THEME, monacoDefaults, monacoTheme } from "./monaco-theme";
+import { useTheme } from "../lib/theme-store";
+import { MONACO_THEMES, defineMonacoThemes, monacoDefaults } from "./monaco-theme";
 
 type Env = { MonacoEnvironment?: { getWorker: (workerId: string, label: string) => Worker } };
 
@@ -108,6 +110,8 @@ const severity = { error: monaco.MarkerSeverity.Error, warning: monaco.MarkerSev
 
 export function MonacoInner({ value, onChange, language = "pgsql", readOnly, placeholder, catalog: catalogProp, markers, onRun, onSave, onFormat, onSelectionChange, onReady, className = "" }: MonacoEditorProps) {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  // The page's theme; the editor switches with it (both themes are defined before mount).
+  const mode = useTheme();
   // The latest callbacks, so the commands registered at mount stay current.
   const callbacks = useRef({ onRun, onSave, onFormat, onSelectionChange });
   callbacks.current = { onRun, onSave, onFormat, onSelectionChange };
@@ -135,11 +139,11 @@ export function MonacoInner({ value, onChange, language = "pgsql", readOnly, pla
       <Editor
         value={value}
         language={language}
-        theme={MONACO_THEME}
+        theme={MONACO_THEMES[mode]}
         loading={<EditorSkeleton />}
         options={{ ...monacoDefaults, readOnly, placeholder }}
         beforeMount={(m) => {
-          m.editor.defineTheme(MONACO_THEME, monacoTheme);
+          defineMonacoThemes(m.editor);
           registerProvider();
         }}
         onMount={(editor) => {

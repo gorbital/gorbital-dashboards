@@ -6,6 +6,7 @@ import { Badge, StatusCode } from "@gorbital/dash/components/badge";
 import { Table } from "@gorbital/dash/components/table";
 import { spanKindColor } from "@gorbital/dash/charts/waterfall";
 import { fmtMs, fmtTime } from "@gorbital/dash/lib/format";
+import { theme } from "@gorbital/dash/theme";
 import { traces, type Trace } from "@/lib/mock";
 
 export default function Traces() {
@@ -46,7 +47,7 @@ export default function Traces() {
                     {t.spans
                       .filter((s) => s.depth > 0)
                       .map((s) => (
-                        <i key={s.id} className="h-full" style={{ width: `${Math.max(1.5, (s.duration / t.ms) * 100)}%`, background: s.error ? "#FF5C2B" : spanKindColor[s.kind], opacity: 0.85 }} />
+                        <i key={s.id} className="h-full" style={{ width: `${Math.max(1.5, (s.duration / t.ms) * 100)}%`, background: s.error ? theme.danger : spanKindColor[s.kind], opacity: 0.85 }} />
                       ))}
                   </div>
                 ),

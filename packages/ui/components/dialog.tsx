@@ -27,7 +27,7 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
       <RadixDialog.Portal>
         <RadixDialog.Overlay className={overlayClass} />
         <RadixDialog.Content
-          className={`fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-border bg-surface shadow-2xl shadow-black/60 outline-none ${widths[size]}`}
+          className={`fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-border bg-surface shadow-2xl shadow-umbra/60 outline-none ${widths[size]}`}
         >
           <header className="flex items-start gap-3 px-5 pt-4">
             <div className="min-w-0 flex-1">

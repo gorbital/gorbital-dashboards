@@ -28,7 +28,7 @@ type Props = {
   className?: string;
 };
 
-export const menuClass = "z-50 min-w-[180px] rounded-xl border border-border bg-elevated p-1.5 shadow-2xl shadow-black/50 outline-none";
+export const menuClass = "z-50 min-w-[180px] rounded-xl border border-border bg-elevated p-1.5 shadow-2xl shadow-umbra/50 outline-none";
 export const menuItemClass =
   "flex cursor-default select-none items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12px] outline-none data-[highlighted]:bg-raised data-[disabled]:pointer-events-none data-[disabled]:opacity-50";
 

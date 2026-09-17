@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Bell, ChevronDown, ChevronsUpDown, Search } from "lucide-react";
 import { Mark } from "./brand";
+import { ThemeToggle } from "./theme-toggle";
 import { products, type ProductId } from "../lib/products";
 
 export type ShellVariant = "boxed" | "docked" | "rail";
@@ -53,7 +54,7 @@ function Switcher({ product, version, compact }: { product: ProductId; version?:
       )}
       <details className="absolute inset-0">
         <summary className="block h-full w-full cursor-pointer list-none [&::-webkit-details-marker]:hidden" aria-label="Switch tool" />
-        <div className="absolute left-0 top-full z-30 mt-2 w-[240px] rounded-xl border border-border bg-elevated p-1.5 shadow-2xl shadow-black/50">
+        <div className="absolute left-0 top-full z-30 mt-2 w-[240px] rounded-xl border border-border bg-elevated p-1.5 shadow-2xl shadow-umbra/50">
           {[p, ...others.map((id) => products[id])].map((q) => (
             <a
               key={q.id}
@@ -116,12 +117,13 @@ function Boxed({ product, version, nav, app, appChip, user, searchHint, search, 
   const p = products[product];
   return (
     <div className="dotgrid min-h-screen bg-bg p-4">
-      <div className="flex h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl shadow-black/50">
+      <div className="flex h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl shadow-umbra/50">
         <header className="flex h-14 shrink-0 items-center gap-4 border-b border-hairline px-4">
           <Switcher product={product} version={version} />
           <span className="h-5 w-px bg-hairline" />
           <div className="flex min-w-[220px] items-stretch">{appChip ?? <AppChip app={app} className="w-full py-1.5" />}</div>
           <div className="mx-auto flex w-[360px] items-stretch">{search ?? <SearchButton hint={searchHint} className="w-full" />}</div>
+          <ThemeToggle />
           <BellButton />
           <Avatar user={user} withName />
         </header>
@@ -164,6 +166,7 @@ function Docked({ product, version, nav, app, appChip, user, searchHint, search,
           </nav>
           <div className="ml-6 flex w-[380px] items-stretch">{search ?? <SearchButton hint={searchHint} className="w-full" />}</div>
           <span className="ml-auto" />
+          <ThemeToggle />
           <BellButton />
           <Avatar user={user} />
         </header>
@@ -189,6 +192,7 @@ function Rail({ product, version, nav, app, appChip, user, searchHint, search, c
           <span className="font-mono text-[11px] text-dim">{version}</span>
           {appChip ?? <AppChip app={app} className="ml-3 rounded-full py-1.5" />}
           <div className="ml-auto flex w-[360px] items-stretch">{search ?? <SearchButton hint={searchHint} className="w-full rounded-full" />}</div>
+          <ThemeToggle />
           <BellButton />
           <Avatar user={user} withName />
         </header>

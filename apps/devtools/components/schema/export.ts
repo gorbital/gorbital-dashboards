@@ -5,7 +5,7 @@
  */
 import { getNodesBounds, type Node } from "@xyflow/react";
 import { toPng, toSvg } from "html-to-image";
-import { theme } from "@gorbital/dash/theme";
+import { resolveToken } from "@gorbital/dash/theme";
 
 const PAD = 40;
 
@@ -17,7 +17,7 @@ export async function exportImage(container: HTMLElement, nodes: Node[], format:
   const width = Math.ceil(bounds.width + PAD * 2);
   const height = Math.ceil(bounds.height + PAD * 2);
   const options = {
-    backgroundColor: theme.bg,
+    backgroundColor: resolveToken("bg"),
     width,
     height,
     pixelRatio: format === "png" ? (width * height > 16_000_000 ? 1 : 2) : 1,

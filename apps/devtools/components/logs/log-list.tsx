@@ -73,7 +73,7 @@ export function LogList({ rows, loading, empty, pending, onHold, onShowPending, 
               onShowPending();
               top.current?.scrollIntoView({ block: "start", behavior: "smooth" });
             }}
-            className="inline-flex h-7 items-center gap-1.5 rounded-full border border-primary/40 bg-primary/15 px-3 font-mono text-[11px] text-primary shadow-lg shadow-black/40 backdrop-blur hover:bg-primary/25"
+            className="inline-flex h-7 items-center gap-1.5 rounded-full border border-primary/40 bg-primary/15 px-3 font-mono text-[11px] text-primary shadow-lg shadow-umbra/40 backdrop-blur hover:bg-primary/25"
           >
             <ArrowUp size={11} /> {fmtInt(pending)} new record{pending === 1 ? "" : "s"}
           </button>

@@ -125,7 +125,7 @@ export function OutputConsole() {
             size="sm"
             kind="secondary"
             icon={<ArrowDown size={11} />}
-            className="absolute bottom-3 right-4 shadow-xl shadow-black/40"
+            className="absolute bottom-3 right-4 shadow-xl shadow-umbra/40"
             onClick={() => {
               setAtBottom(true);
               if (box.current) box.current.scrollTop = box.current.scrollHeight;

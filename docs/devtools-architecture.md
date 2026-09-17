@@ -441,7 +441,14 @@ and `/_portal/api/jobs`, as with the real app.
 
 Everything is styled with the theme's tokens only: 12–13 px text, mono
 labels, `border-border`/`bg-elevated`/`text-dim`, `rounded-lg`, lime
-`primary` as the one accent.
+`primary` as the one accent. The tokens have a dark and a light value
+(`theme.css`, `html[data-theme="light"]`), so every primitive, chart and
+page renders in both themes without work of its own; the shell's
+`ThemeToggle` and the palette's "Toggle theme" set the attribute, and
+`lib/theme-store.ts` (`useTheme`) is how the few components that draw
+outside CSS (Monaco, the toaster, the diagram export) follow it. Shadows use
+`shadow-umbra/…` (black on the dark ground, a warm grey on paper), never
+`shadow-black`.
 
 | File | Exports | Notes |
 |---|---|---|
@@ -460,7 +467,8 @@ labels, `border-border`/`bg-elevated`/`text-dim`, `rounded-lg`, lime
 | `command.tsx` | `CommandPalette`, `CommandItem` | cmdk on ⌘K; items navigate (`href`) or run (`onSelect`); renders the search box that opens it |
 | `spinner.tsx` | `Spinner`, `Skeleton`, `SkeletonLines` | |
 | (devtools) `table-editor/popover.tsx` | `Popover` | Radix popover with the menu's look; lives in the app until another page needs it |
-| `shell.tsx` | `Shell`, `AppChip`, `SearchButton` | `appChip` and `search` props take client components; `version` is a `ReactNode` |
+| `shell.tsx` | `Shell`, `AppChip`, `SearchButton` | `appChip` and `search` props take client components; `version` is a `ReactNode`; every variant's top bar has the theme toggle next to the bell |
+| `theme-toggle.tsx`, `lib/theme-store.ts` | `ThemeToggle`, `useTheme`, `setTheme`, `toggleTheme`, `THEME_INIT_SCRIPT` | the light/dark switch and the store behind it (`data-theme` on `<html>`, `localStorage.theme`, a MutationObserver) |
 | `nav.tsx` | `Nav` | `tone: "live"` renders a pulsing dot |
 | `monaco.tsx`, `monaco-inner.tsx`, `monaco-theme.ts`, `monaco-sql.ts` | `MonacoEditor`, `EditorSkeleton`, `EditorHandle`, `SqlCatalog`, `EditorMarker` | the themed Monaco editor, client-only (below) |
 
@@ -542,12 +550,15 @@ chunk, so the embedded portal works offline. Importing `editor.api` instead of
 `monaco-editor` keeps the other 80 languages and the TypeScript/CSS/JSON
 workers out of the bundle.
 
-The theme (`monaco-theme.ts`) is built from `theme.ts`: background `bg`,
-keywords in the lime `primary` (bold), strings `warn`, numbers `info`,
-functions `violet`, comments `dim` italic, the cursor lime, selections and
-bracket matches lime washes, the suggest and hover widgets on `elevated`
-with `border`. It is the one place besides `theme.ts` that spells a colour,
-because Monaco wants hex strings. `monacoDefaults` sets 12.5 px Geist Mono
+The themes (`monaco-theme.ts`, `gorbital-dark` and `gorbital-light`) are
+built from `theme.ts`'s hex `palettes`: background `bg`, keywords in
+`primary` (bold), strings `warn`, numbers `info`, functions `violet`,
+comments `dim` italic, the cursor in `primary`, selections and bracket
+matches accent washes, the suggest and hover widgets on `elevated` with
+`border`. It is the one place besides `theme.ts` that spells a colour,
+because Monaco wants hex strings. `monaco-inner.tsx` defines both themes in
+`beforeMount` and passes the one `useTheme()` names, so the editor switches
+with the page. `monacoDefaults` sets 12.5 px Geist Mono
 (`var(--font-geist-mono)`), no minimap, line numbers, bracket matching and
 pair colours, `automaticLayout`, no word-based suggestions.
 

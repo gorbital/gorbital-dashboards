@@ -23,6 +23,22 @@ tooltips, toasts, the ⌘K palette, spinners and skeletons) and the SVG charts
 match `gorbital-web/packages/ui/theme.css`; change both when changing a
 colour.
 
+## Light and dark theme
+
+`packages/ui/theme.css` defines the dark tokens in Tailwind's `@theme` block
+and overrides every colour token under `html[data-theme="light"]` (the same
+paper palette as the website). Each app's layout runs a small inline script
+before the first paint that sets `data-theme` from `localStorage.theme`, else
+from `prefers-color-scheme`, with dark as the fallback; the shell's sun/moon
+button (`components/theme-toggle.tsx`) and the ⌘K palette's "Toggle theme"
+switch it and remember the choice per browser. Components only use the
+tokens (`bg-surface`, `text-dim`, `theme.primary`…), so they follow the
+theme on their own; `theme.ts` exposes the tokens as `var(--color-…)`
+strings for SVG and inline styles, and `palettes` in hex for the two places
+that cannot read CSS variables (Monaco's themes, image exports).
+`lib/theme-store.ts` (`useTheme`, `setTheme`, `toggleTheme`) is how a
+component that draws outside CSS follows the attribute.
+
 ## Live data and mock data
 
 The Observability and Deployment portals render from `apps/*/lib/mock.ts`

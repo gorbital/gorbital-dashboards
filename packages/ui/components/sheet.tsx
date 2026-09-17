@@ -29,7 +29,7 @@ export function Sheet({ open, onOpenChange, title, meta, description, children, 
       <RadixDialog.Portal>
         <RadixDialog.Overlay className={overlayClass} />
         <RadixDialog.Content
-          className={`fixed bottom-4 right-4 top-4 z-50 flex max-w-[calc(100vw-2rem)] flex-col rounded-2xl border border-border bg-surface shadow-2xl shadow-black/60 outline-none ${widths[width]}`}
+          className={`fixed bottom-4 right-4 top-4 z-50 flex max-w-[calc(100vw-2rem)] flex-col rounded-2xl border border-border bg-surface shadow-2xl shadow-umbra/60 outline-none ${widths[width]}`}
         >
           <header className="flex items-start gap-3 border-b border-hairline px-5 py-4">
             <div className="min-w-0 flex-1">

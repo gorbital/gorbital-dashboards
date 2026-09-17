@@ -310,7 +310,7 @@ function RoundTrip({ m }: { m: SignInTestMethod }) {
             Stop waiting
           </Button>
         )}
-        <span className="text-[11.5px] text-dim">{ceremony ? "creates a throwaway passkey in a popup" : `signs in with ${m.name} in a popup${mock ? " (mock mode: no popup, a pretend result)" : ""}`}</span>
+        <span className="text-[11.5px] text-dim">{ceremony ? "creates a throwaway passkey in a popup" : `signs in with ${m.name} in a popup${mock && m.live.available ? " (mock mode: no popup, a pretend result)" : ""}`}</span>
       </div>
       <Unavailable m={m} />
       {m.callback_url && (
@@ -414,6 +414,8 @@ function TotpTest({ m }: { m: SignInTestMethod }) {
   const [result, setResult] = useState<TOTPTestResult | undefined>();
   const normalized = normalizeTotpCode(code);
   const done = totpDone(result);
+  // The start repeats checks the panel already shows; only new ones or changed statuses are worth a line.
+  const startChecks = (test?.checks ?? []).filter((c) => !m.checks.some((x) => x.code === c.code && x.status === c.status));
 
   const begin = () => {
     setResult(undefined);
@@ -445,7 +447,7 @@ function TotpTest({ m }: { m: SignInTestMethod }) {
                 <CopyButton text={test.secret} label="Copy secret" />
               </div>
             </div>
-            {test.checks.length > 0 && <CheckList checks={test.checks} />}
+            {startChecks.length > 0 && <CheckList checks={startChecks} />}
             <form
               className="flex flex-wrap items-end gap-2"
               onSubmit={(e) => {

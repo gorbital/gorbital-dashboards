@@ -14,13 +14,13 @@ type Props = {
   description?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
-  /** 420, 480 or 560 px. */
-  width?: "sm" | "md" | "lg";
+  /** 420, 480, 560 or 820 px; `xl` is for editors with a row of controls per item. */
+  width?: "sm" | "md" | "lg" | "xl";
   /** Remove the body padding, for tables and lists. */
   flush?: boolean;
 };
 
-const widths = { sm: "w-[420px]", md: "w-[480px]", lg: "w-[560px]" };
+const widths = { sm: "w-[420px]", md: "w-[480px]", lg: "w-[560px]", xl: "w-[820px]" };
 
 /** A panel that slides in from the right edge, for details and forms that keep the page behind in view. */
 export function Sheet({ open, onOpenChange, title, meta, description, children, footer, width = "md", flush }: Props) {

@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
-import { CornerDownLeft, Search } from "lucide-react";
+import { CornerDownLeft, Search, SunMoon } from "lucide-react";
+import { toggleTheme } from "../lib/theme-store";
 import { SearchButton } from "./shell";
 
 export type CommandItem = {
@@ -27,6 +28,11 @@ type Props = {
   placeholder?: string;
   className?: string;
 };
+
+/** Actions every palette offers, after the caller's items. */
+const builtin: CommandItem[] = [
+  { id: "portal:theme", label: "Toggle theme", hint: "light / dark", group: "Portal", icon: <SunMoon size={13} />, keywords: ["light", "dark", "appearance", "colour", "color", "mode"], onSelect: () => toggleTheme() },
+];
 
 /** The ⌘K palette and the search box that opens it. Pass it as the shell's `search`. */
 export function CommandPalette({ items, hint, placeholder = "Type a page, a route, a command…", className = "" }: Props) {
@@ -54,7 +60,7 @@ export function CommandPalette({ items, hint, placeholder = "Type a page, a rout
   );
 
   const groups = new Map<string, CommandItem[]>();
-  for (const it of items) {
+  for (const it of [...items, ...builtin]) {
     const g = it.group ?? "";
     groups.set(g, [...(groups.get(g) ?? []), it]);
   }
@@ -68,7 +74,7 @@ export function CommandPalette({ items, hint, placeholder = "Type a page, a rout
         label="Command palette"
         loop
         overlayClassName="fixed inset-0 z-40 bg-bg/70 backdrop-blur-[2px]"
-        contentClassName="fixed left-1/2 top-[18vh] z-50 w-[560px] max-w-[calc(100vw-2rem)] -translate-x-1/2 overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl shadow-black/60 outline-none"
+        contentClassName="fixed left-1/2 top-[18vh] z-50 w-[560px] max-w-[calc(100vw-2rem)] -translate-x-1/2 overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl shadow-umbra/60 outline-none"
       >
         <div className="flex items-center gap-2 border-b border-hairline px-4">
           <Search size={14} className="shrink-0 text-dim" />

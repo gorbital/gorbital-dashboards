@@ -31,7 +31,7 @@ export function Tooltip({ content, children, side = "top", align = "center", sho
           side={side}
           align={align}
           sideOffset={6}
-          className="z-50 max-w-[280px] rounded-lg border border-border bg-elevated px-2.5 py-1.5 text-[11.5px] leading-snug text-text shadow-xl shadow-black/40"
+          className="z-50 max-w-[280px] rounded-lg border border-border bg-elevated px-2.5 py-1.5 text-[11.5px] leading-snug text-text shadow-xl shadow-umbra/40"
         >
           {content}
           {shortcut && <kbd className="ml-2">{shortcut}</kbd>}

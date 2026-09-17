@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono, Manrope, Space_Grotesk } from "next/font/google";
 import { Shell } from "@gorbital/dash/components/shell";
 import { products } from "@gorbital/dash/lib/products";
+import { THEME_INIT_SCRIPT } from "@gorbital/dash/lib/theme-store";
 import { SidebarNav } from "@/components/sidebar-nav";
 import "./globals.css";
 
@@ -25,7 +26,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${manrope.variable} ${geistMono.variable} ${grotesk.variable}`}>
+    <html lang="en" className={`${manrope.variable} ${geistMono.variable} ${grotesk.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Apply the saved or system theme before the first paint; dark is the fallback. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body suppressHydrationWarning>
         <Shell
           product="observe"

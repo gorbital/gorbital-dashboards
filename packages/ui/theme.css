@@ -2,6 +2,8 @@
  * gorbital dashboard theme for Tailwind 4. Import after "tailwindcss" in
  * each app. Colour values match gorbital-web/packages/ui/theme.css
  * (source of truth: docs/brand/theme.md in the gorbital repository).
+ * Dark is the default; html[data-theme="light"] below overrides every
+ * colour token for the light theme.
  *
  * Every app sets --font-manrope and --font-geist-mono through next/font.
  */
@@ -35,6 +37,9 @@
   --color-primary-deeper: #2F3D12;
   --color-primary-shadow: #1F290B;
 
+  /* The colour shadows are cast in: black on the dark ground, a warm grey on paper. */
+  --color-umbra: #000000;
+
   --radius-panel: 14px;
   --radius-tile: 12px;
 
@@ -44,8 +49,8 @@
   --animate-dash: dash 1.6s linear infinite;
 
   @keyframes pulseDot {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(143, 217, 138, 0.45); }
-    60% { box-shadow: 0 0 0 6px rgba(143, 217, 138, 0); }
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-ok) 45%, transparent); }
+    60% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-ok) 0%, transparent); }
   }
   @keyframes rise {
     from { opacity: 0; transform: translateY(8px); }
@@ -64,6 +69,45 @@
   color-scheme: dark;
 }
 
+/*
+ * The light theme: paper instead of the warm black. A script in each app's
+ * layout sets data-theme before the first paint (localStorage.theme, else
+ * the system preference; dark is the fallback) and the shell's toggle
+ * switches it. Every colour token is overridden here, so components,
+ * charts and the Tailwind utilities follow with no work of their own.
+ * Values match gorbital-web's light palette (docs/brand/theme.md).
+ */
+html[data-theme="light"] {
+  color-scheme: light;
+  --color-bg: #f2f1ec;
+  --color-surface: #faf9f5;
+  --color-elevated: #ffffff;
+  --color-raised: #e9e8e1;
+  --color-code-bg: #e9e8e1;
+  --color-text: #0b0c0a;
+  --color-muted: #57564f;
+  --color-dim: #6f6f66;
+  --color-faint: #a3a39a;
+  --color-hairline: #dcdbd2;
+  --color-border: #cfcdc3;
+  --color-border-2: #b3b1a7;
+  --color-danger: #c2410c;
+  --color-warn: #a9781a;
+  --color-ok: #3f8a3a;
+  --color-info: #2f63a8;
+  --color-violet: #6d4fc2;
+
+  /* Lime is a fill on paper, never text: the accent darkens to an olive that reads. */
+  --color-primary: #5c7a12;
+  --color-primary-soft: #4e690f;
+  --color-primary-mid: #7f9f2c;
+  --color-primary-deep: #dff3a6;
+  --color-primary-deeper: #edf8cd;
+  --color-primary-shadow: #f4fadf;
+
+  --color-umbra: #3a3a33;
+}
+
 html, body {
   height: 100%;
 }
@@ -79,7 +123,10 @@ body {
 }
 
 ::selection {
-  background: rgba(198, 242, 74, 0.25);
+  background: color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+html[data-theme="light"] ::selection {
+  background: color-mix(in srgb, #c6f24a 55%, transparent);
 }
 
 * {
@@ -100,14 +147,22 @@ body {
 /* The accent used as a ground: a faint lime wash for the one hero moment. */
 .accent-wash {
   background:
-    radial-gradient(120% 90% at 0% 0%, rgba(198, 242, 74, 0.10), transparent 60%),
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 60%),
+    var(--color-surface);
+}
+html[data-theme="light"] .accent-wash {
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, #c6f24a 28%, transparent), transparent 60%),
     var(--color-surface);
 }
 
 /* Subtle dotted grid used behind graphs and empty states. */
 .dotgrid {
-  background-image: radial-gradient(rgba(240, 239, 233, 0.07) 1px, transparent 1px);
+  background-image: radial-gradient(color-mix(in srgb, var(--color-text) 7%, transparent) 1px, transparent 1px);
   background-size: 18px 18px;
+}
+html[data-theme="light"] .dotgrid {
+  background-image: radial-gradient(color-mix(in srgb, var(--color-text) 10%, transparent) 1px, transparent 1px);
 }
 
 /* Tabular figures everywhere numbers sit in columns. */

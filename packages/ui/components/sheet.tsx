@@ -14,13 +14,13 @@ type Props = {
   description?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
-  /** 420, 480 or 560 px. */
-  width?: "sm" | "md" | "lg";
+  /** 420, 480, 560 or 820 px; `xl` is for editors with a row of controls per item. */
+  width?: "sm" | "md" | "lg" | "xl";
   /** Remove the body padding, for tables and lists. */
   flush?: boolean;
 };
 
-const widths = { sm: "w-[420px]", md: "w-[480px]", lg: "w-[560px]" };
+const widths = { sm: "w-[420px]", md: "w-[480px]", lg: "w-[560px]", xl: "w-[820px]" };
 
 /** A panel that slides in from the right edge, for details and forms that keep the page behind in view. */
 export function Sheet({ open, onOpenChange, title, meta, description, children, footer, width = "md", flush }: Props) {
@@ -29,7 +29,7 @@ export function Sheet({ open, onOpenChange, title, meta, description, children, 
       <RadixDialog.Portal>
         <RadixDialog.Overlay className={overlayClass} />
         <RadixDialog.Content
-          className={`fixed bottom-4 right-4 top-4 z-50 flex max-w-[calc(100vw-2rem)] flex-col rounded-2xl border border-border bg-surface shadow-2xl shadow-black/60 outline-none ${widths[width]}`}
+          className={`fixed bottom-4 right-4 top-4 z-50 flex max-w-[calc(100vw-2rem)] flex-col rounded-2xl border border-border bg-surface shadow-2xl shadow-umbra/60 outline-none ${widths[width]}`}
         >
           <header className="flex items-start gap-3 border-b border-hairline px-5 py-4">
             <div className="min-w-0 flex-1">

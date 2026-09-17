@@ -124,11 +124,12 @@ export function ColumnFields({ form, onChange, types, mode, compact, onRemove, o
 
   return (
     <div className={`rounded-lg border ${error ? "border-danger/40" : "border-hairline"} bg-bg/40 p-2`}>
-      <div className="grid grid-cols-[minmax(120px,1.1fr)_minmax(200px,1.6fr)_minmax(90px,1fr)_auto] items-center gap-2">
-        {nameField}
-        {typeField}
-        {defaultField}
-        <div className="flex items-center gap-2.5">
+      {/* One row of controls when the sheet is wide enough; the fields wrap onto a second line when it is not. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-0 flex-[1.1_1_140px]">{nameField}</div>
+        <div className="min-w-0 flex-[1.6_1_220px]">{typeField}</div>
+        <div className="min-w-0 flex-[1_1_110px]">{defaultField}</div>
+        <div className="flex shrink-0 items-center gap-2.5">
           <Tooltip content="nullable">
             <span>
               <Checkbox checked={form.nullable && !form.primaryKey} onCheckedChange={(v) => set({ nullable: v === true })} disabled={form.primaryKey} aria-label="Nullable" />

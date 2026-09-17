@@ -345,7 +345,7 @@ const GridRow = memo(function GridRow({ r, row, columns, selected, activeCol, ed
               )}
             </div>
             {isEditing && editing && (
-              <div className="absolute left-0 top-0 z-30 min-w-[300px] max-w-[440px] rounded-lg border border-border bg-elevated p-2 shadow-2xl shadow-black/50" onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+              <div className="absolute left-0 top-0 z-30 min-w-[300px] max-w-[440px] rounded-lg border border-border bg-elevated p-2 shadow-2xl shadow-umbra/50" onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
                 <ValueInput column={col} value={editing.value} onChange={(nv) => onChangeEdit(nv === undefined ? null : nv)} autoFocus onCommit={onCommit} onCancel={onCancel} />
                 {editing.error && <div className="mt-1.5 font-mono text-[11px] text-danger">{editing.error}</div>}
                 <div className="mt-2 flex items-center justify-end gap-1.5">

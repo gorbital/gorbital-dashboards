@@ -49,7 +49,7 @@ export function Nav({ sections, style = "list" }: Props) {
                   {(item.badge !== undefined || item.tone === "live") && (
                     <i className={`absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full ${item.tone === "hot" ? "bg-danger" : item.tone === "live" ? "bg-ok" : active ? "bg-bg" : "bg-primary"}`} />
                   )}
-                  <span className="pointer-events-none absolute left-full top-1/2 z-30 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg border border-border bg-elevated px-2.5 py-1.5 text-[12px] font-medium text-text opacity-0 shadow-xl shadow-black/40 transition-opacity group-hover:opacity-100">
+                  <span className="pointer-events-none absolute left-full top-1/2 z-30 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg border border-border bg-elevated px-2.5 py-1.5 text-[12px] font-medium text-text opacity-0 shadow-xl shadow-umbra/40 transition-opacity group-hover:opacity-100">
                     {item.label}
                     {item.badge !== undefined && <span className="ml-2 font-mono text-[11px] text-dim">{item.badge}</span>}
                   </span>

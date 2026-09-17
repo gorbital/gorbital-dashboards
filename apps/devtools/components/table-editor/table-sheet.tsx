@@ -70,7 +70,7 @@ export function TableSheet({ open, onOpenChange, schema: initialSchema, onCreate
   const columnNames = columns.map((c) => c.name.trim()).filter(Boolean);
 
   return (
-    <Sheet open={open} onOpenChange={close} title="New table" meta={schema} width="lg" description="Columns, constraints and keys become one migration in the app's repository; preview the SQL before it is written." footer={<PlanActions flow={flow} disabled={!valid} applyLabel="Create table" />}>
+    <Sheet open={open} onOpenChange={close} title="New table" meta={schema} width="xl" description="Columns, constraints and keys become one migration in the app's repository; preview the SQL before it is written." footer={<PlanActions flow={flow} disabled={!valid} applyLabel="Create table" />}>
       <div className="grid gap-5">
         <div className="grid grid-cols-[120px_1fr] gap-3">
           <Field label="Schema">

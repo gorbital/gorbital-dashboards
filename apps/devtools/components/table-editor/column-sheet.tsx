@@ -43,7 +43,7 @@ export function ColumnSheet({ open, onOpenChange, schema, table, column, onAppli
       onOpenChange={onOpenChange}
       title={column ? `Edit ${column.name}` : "Add column"}
       meta={`${schema}.${table}`}
-      width="md"
+      width="lg"
       description={column ? "Only what you change goes into the migration; a rename becomes a second one." : "The column becomes one migration in the app's repository."}
       footer={<PlanActions flow={flow} disabled={Boolean(error) || (Boolean(column) && changes.length === 0)} applyLabel={column ? "Apply changes" : "Add column"} />}
     >

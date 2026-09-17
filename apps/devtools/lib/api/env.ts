@@ -95,3 +95,32 @@ export function useDevConfig(enabled: boolean) {
     retry,
   });
 }
+
+/** The entry for one key, for Project Settings' fields. */
+export function envEntry(list: EnvList | undefined, key: string): EnvEntry | undefined {
+  return list?.entries.find((e) => e.key === key);
+}
+
+/** `useUpdateEnv`, also refreshing Project Settings, which reads the same file. */
+export function useSetEnv() {
+  const qc = useQueryClient();
+  const update = useUpdateEnv();
+  return {
+    ...update,
+    mutate: (change: EnvChange, options?: Parameters<typeof update.mutate>[1]) =>
+      update.mutate(change, {
+        ...options,
+        onSettled: (...args) => {
+          void qc.invalidateQueries({ queryKey: ["portal", "project"] });
+          options?.onSettled?.(...args);
+        },
+      }),
+    mutateAsync: async (change: EnvChange, options?: Parameters<typeof update.mutateAsync>[1]) => {
+      try {
+        return await update.mutateAsync(change, options);
+      } finally {
+        void qc.invalidateQueries({ queryKey: ["portal", "project"] });
+      }
+    },
+  };
+}

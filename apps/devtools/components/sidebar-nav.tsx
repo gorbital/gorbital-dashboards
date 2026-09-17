@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Boxes, Database, FileKey2, FolderOpen, GitBranch, GitCommitHorizontal, KeyRound, LayoutDashboard, ListOrdered, Mail, Route, ScrollText, ShieldCheck, SlidersHorizontal, Table2, TerminalSquare, Waypoints, Zap } from "lucide-react";
+import { Activity, Boxes, Database, FileKey2, FolderOpen, GitBranch, GitCommitHorizontal, KeyRound, LayoutDashboard, ListOrdered, Mail, Route, ScrollText, Settings, ShieldCheck, SlidersHorizontal, Table2, TerminalSquare, Wand2, Waypoints, Zap } from "lucide-react";
 import { Nav, type NavSection } from "@gorbital/dash/components/nav";
 import { Tooltip } from "@gorbital/dash/components/tooltip";
 import { isNoMailCatcher, useInbox } from "@/lib/api/mail";
@@ -43,6 +43,8 @@ export function SidebarNav() {
         { label: "Database", href: "/database", icon: Database, badge: pending > 0 ? `${pending} pending` : undefined, tone: pending > 0 ? "hot" : undefined },
         { label: "Storage", href: "/storage", icon: FolderOpen },
         { label: "Git", href: "/git", icon: GitBranch },
+        { label: "Generators", href: "/generators", icon: Wand2, badge: status.data?.generators.length },
+        { label: "Project", href: "/project", icon: Settings },
       ],
     },
   ];

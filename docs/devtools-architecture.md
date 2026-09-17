@@ -38,6 +38,8 @@ apps/devtools
 │   ├── migrations/         the Migrations page (Phase 4)
 │   ├── observability/      the Observability screen (Phase 8, below)
 │   ├── git/                the Git screen (Phase 11, below): status header, changes and the diff viewer, branches, merge, history
+│   ├── generators/         the generators hub (Phase 12, below): the cards, the shared plan → apply sheet, one form per generator
+│   ├── project/            Project Settings (Phase 12, below): the sections with env editing, the CORS list, the keys, the danger zone
 │   ├── app-chip.tsx        the shell's app chip, live
 │   ├── portal-version.tsx  the shell's version, live
 │   ├── search.tsx          the ⌘K palette: pages, the app's live routes, app actions
@@ -56,6 +58,8 @@ apps/devtools
     ├── observability/      the Observability screen's pure logic: formatting, grading, route ranking, share bars, sample series
     ├── storage/            the Storage screen's pure logic: keys and prefixes, listings, sizes and kinds, upload progress, the guard
     ├── git/                the Git screen's pure logic: the unified-diff parser and hunk patches, the graph lanes, branch names, messages, relative time
+    ├── generators/         the hub's pure logic: the resource field rules, the add-mail/add-storage forms, the plan text, the catalog
+    ├── project/            Project Settings' pure logic: the CORS list codec, the env key mapping
     └── api/                the data layer (below)
 ```
 
@@ -101,6 +105,11 @@ serves `out/` at `http://127.0.0.1:3100` and resolves `/routes` to
 | `mock/observability.ts` | The health table, the sampler, the pgmeta statistics and `/ops/observability/*` in mock mode. |
 | `git.ts` | The Git screen's types (`GitStatus`, `GitFile`, `GitDiff`, `GitCommit`, `GitBranch`, `GitRemoteResult`, `GitMergePreview`, matching `cli/internal/portal/git.go`) and hooks (Phase 11, below). |
 | `mock/git.ts` | The repository in memory behind `/_portal/api/git/*` in mock mode. |
+| `generators.ts` | The generators hub's data layer (Phase 12, below): the input type per generator (`GeneratorInputs`), `planGenerator` and `applyGenerator` over `POST /_portal/api/generators/{name}/{plan,apply}` with the Jobs screen's envelope, `normalizeResponse` (Go's `null` for an empty `changes` or `next` becomes `[]`). |
+| `project.ts` | Project Settings' data layer: `ProjectSettings` and `DangerAction` (matching `cli/internal/portal/project.go`), `useProject`, `useDangerAction` (runs a danger row's `method` + `path`), and the ops API's service accounts and keys: `useServiceAccounts`, `useServiceAccountKeys`, `useCreateServiceAccount`, `useDeleteServiceAccount`, `useCreateApiKey`, `useRevokeApiKey`, `isOperatorRefused`. |
+| `env.ts` | The env editor's API (Phase 9); Project Settings uses `useEnv`, `useSetEnv` and `envEntry` from it (`isNoEnvEditor`. **Phase 9 builds the Environment screen with a fuller data layer in another worktree; on merge that layer supersedes this file** (the types match `EnvEntry` and `EnvChange` field for field, so the hooks move without changing their callers). |
+| `mock/generators.ts` | The hub's generators in mock mode: a small working tree in memory that `resource`, `add-mail`, `add-storage`, `add-rls` and `add-orgs` plan against and apply onto (below). |
+| `mock/project.ts` | `.env` in memory behind `/_portal/api/project`, `/_portal/api/env…` and `DELETE /_portal/api/mail`, plus `/ops/service-accounts…` in mock mode (below). |
 
 ### Live state: how a change reaches the page
 
@@ -1275,6 +1284,151 @@ refused with git's message, merging `fix/readme-typo` leaves README.md
 conflicted with `state: merging` until it is staged and committed or the
 merge is aborted. `resetMockGit` puts it back; `resetMock` calls it.
 
+## Generators (`/generators`)
+
+Phase 12 (roadmap item 82, [ADR-0077](../../gorbital/docs/adr/0077-generators-hub-first-run-and-project-settings.md)):
+every generator `GET /_portal/api/status` lists (`add-mail`, `add-orgs`,
+`add-rls`, `add-storage`, `job`, `migration`, `resource`) as a card with a
+form, a diff preview and an apply, through the same plans the CLI prints
+(`orb gen … --dry-run`, `orb add … --dry-run`). The backend is
+`cli/internal/cli/dev_portal.go` (`generators()`, the `*InputJSON` types)
+and `add_plans.go`; the endpoints are `POST /_portal/api/generators/{name}/plan`
+and `/apply` with `{"input": {…}, "allow_dirty": bool}`, the envelope the
+Jobs screen already uses.
+
+```
+app/generators/page.tsx           <Suspense> around the client component (?generator= opens a card's sheet)
+components/generators/
+├── generators.tsx                the page: the cards from status.generators in the catalog's order, one sheet per generator, ?generator=
+├── generator-sheet.tsx           useGeneratorFlow (idle → planning → planned → applying → applied) and GeneratorSheet: the form on top,
+│                                 the CLI command with a copy button, the error, the plan; the footer's allow-dirty checkbox, Preview, Apply,
+│                                 then Restart the app / Apply migrations / Done by what the generator needs
+├── plan-panel.tsx                PlanPanel: the CLI's summary as it prints it, the files (Phase 6's PlanFile diffs, or the add-orgs file list),
+│                                 the next steps (numbered, or as the CLI laid them out); GeneratorError with the dirty-tree hint
+├── resource-form.tsx             name, belongs to (user/organisation), the fields editor (name, type, enum values, unique), plural, ID prefix
+├── migration-form.tsx            the name and the file it becomes
+├── mail-form.tsx                 provider (Resend/SMTP), the SMTP server, port and encryption, username; secrets stay out
+├── storage-form.tsx              driver (local/MinIO/S3/Spaces/R2) and the fields the driver reads, MinIO's defaults as placeholders
+└── notes.tsx                     RlsNote, OrgsNote (what the branch workflow does), JobNote (a link to /jobs?new=1)
+lib/generators/
+├── catalog.ts                    GENERATOR_CATALOG: title, blurb, what each writes, its CLI, what it needs (database, multi-tenant), what follows
+│                                 (restart, migrate, branch); orderGenerators, gateReason
+├── resource.ts                   the fields editor's rules mirrored from cli/internal/recipes/resource.go (snake_case, reserved names, enum values,
+│                                 unique on strings only, at least one string, ≤ 20 fields), resourceNames (ident, plural, package, table, route,
+│                                 ID prefix like NewResourceData), toResourceInput (`name:string:unique` specs), toResourceCommand
+├── add.ts                        the add-mail and add-storage forms: validation like normalizeMail/planStorage, the inputs, the commands
+└── plan.ts                       planChanges (null → []), summaryLines, nextStepsPreformatted, describeOrgsPlan, isFileListPlan, isNoop
+```
+
+**One sheet, seven generators.** `GeneratorSheet` takes the generator's
+name, the input the form produced (or `null` while it's invalid; Preview
+then asks the form to show its errors), the equivalent command, and the
+form as a render prop that learns `locked` (after apply) and the portal's
+422 `generator_failed` detail so a field can claim it. Preview posts
+`plan`; the answer's summary is shown as the CLI prints it (the two-space
+indent stripped), every `create` in full and every `modify` as hunks of
+`before` against `content` (Phase 6's `PlanFile`), and `next` either
+numbered or, when the CLI laid it out itself (`orb add mail`'s "Next
+steps:" block), as it came. Editing the form after a preview drops the
+plan. Apply posts `apply` with `allow_dirty` from the checkbox; a refusal
+for uncommitted changes shows the hint to tick it, a 409 `plan_conflict`
+the hint to preview again. After apply the footer offers what the
+generator needs: **Restart the app** (`app/restart`) for `add-mail` and
+`add-storage`, **Apply migrations** (`POST /_portal/api/app/migrate`) and a
+restart for `resource`, `migration` and `add-rls`, and Done for `add-orgs`.
+
+**The cards.** `status.generators` decides what's shown; the catalog
+supplies the copy and an unknown name still gets a card. A generator that
+needs the database is gated on the Minimal preset ("needs the Full preset");
+`add-rls` on a single-tenant app says it needs `orb add orgs` but still
+previews, so the CLI's own message shows. `job` links to the Jobs screen's
+sheet, which already has the three-tab form.
+
+**`add-orgs` is different.** Its plan is the CLI's dry run: the files it
+would merge and the branch, with no content (`changes` without `content`,
+or `null` when there's nothing), so the sheet shows a file list and says
+that Apply runs `orb add orgs` itself: the branch, the merge, the build,
+the regenerated `api/`, the commit. The allow-dirty checkbox is disabled
+there (the command insists on a clean tree). The Overview's console shows
+the command's output.
+
+**Mock mode.** `lib/api/mock/generators.ts` keeps a small working tree
+(`internal/app/modules.go` and `permissions.go` with their anchors,
+`infra_mail.go`, `.env.example`, `.env`, `gorbital.yaml`, `gorbital.lock`,
+`compose.yaml`, `go.mod`) and plans against it: `resource` parses the
+specs with the CLI's messages, renders the module's files, the migration
+and the two anchor edits, and refuses an existing module with 409;
+`add-mail` diffs the provider swap (a noop when the provider is already in
+place) with the CLI's laid-out next steps; `add-storage` rewrites the
+storage block and adds MinIO to `compose.yaml`; `add-rls` writes the policy
+migration once; `add-orgs` says the sample app already has organisations.
+Apply refuses without `allow_dirty` (the sample repository is dirty),
+writes into the tree, logs orb lines and updates what Project Settings
+reads (`STORAGE_DRIVER`…); `migration` stays with `mock/schema.ts` so the
+file lands in the Migrations page's list.
+
+## Project Settings (`/project`)
+
+Phase 12 (roadmap item 84, ADR-0077): the app as the manifest, `go.mod`
+and `.env` describe it, each value with the env key behind it, edited
+through the env editor with a restart offered; API and service-account
+keys from the ops API; a danger zone. The backend is
+`cli/internal/portal/project.go` (`GET /_portal/api/project`,
+`POST /_portal/api/project/reset-database`), `env.go` (`GET`/`PUT
+/_portal/api/env`, ADR-0074) and the auth module's
+`/ops/service-accounts…`.
+
+```
+app/project/page.tsx              the server page
+components/project/
+├── project.tsx                   the page: the restart banner (after any save answered restart_needed), the no-env-editor note, the sections
+├── sections.tsx                  App (name, module, preset, tenancy, features, dir, git), Ports and addresses (APP_ADDR, DEV_PORTAL_PORT,
+│                                 POSTGRES_PORT), Database (host without credentials), Mail (MAIL_DELIVERY, the provider with a link to add-mail),
+│                                 Storage (the driver with a link to add-storage), Logging and docs (APP_LOG_LEVEL, APP_LOG_FORMAT, APP_DOCS_ENABLED)
+├── env-field.tsx                 EnvField: a value with its key badge, Edit in place (text, select or switch), Save through useSetEnv; InfoRow
+├── cors-editor.tsx               the origins as rows, validated (scheme and host, no path, no wildcard), saved as APP_CORS_ORIGINS
+├── keys.tsx                      service accounts with their keys: create an account, create a key (shown once, with Copy), revoke, delete
+└── danger-zone.tsx               each danger row with a ConfirmDialog quoting `loses`; reset-database asks to type `reset` and shows the 202 detail
+lib/project/
+├── cors.ts                       parseOrigins, joinOrigins, originError, validateOrigins
+└── env-keys.ts                   setKey, corsChange, docsChange, loggingKeys, formatValue, addrError, portError; the option lists
+```
+
+**The key is the contract.** The screen never guesses which variable a
+value comes from: the settings name it (`app.key`, `portal.key`,
+`database_settings.port_key`, `mail.key`, `storage.key`, `cors.key`,
+`logging.keys`, `docs.key`) and `EnvField` edits exactly that key with
+`PUT /_portal/api/env {"set": {KEY: value}}`. The controls show the value
+as `.env` has it (`useEnv`) and the settings' derived reading next to it
+(`json (orb dev)` for an empty `APP_LOG_FORMAT`); every save invalidates
+both. The answer's `restart_needed` raises the page's banner with a
+Restart button (`app/restart`). `DATABASE_URL` carries credentials, so the
+Database section shows the host and points at the Environment screen for
+edits. An orb dev without the editor (404 `no_env_editor`) shows the values
+read-only with a note.
+
+**Keys.** `/ops/service-accounts` is the auth module's; it wants a
+signed-in principal, and the development operator orb dev sends
+(ADR-0066) isn't one, so a current app answers 401 `unauthenticated`. The
+section explains that in place of the list; when the app accepts the
+operator it lists the accounts, expands one to its keys, creates accounts
+and keys (the key shown once), revokes and deletes.
+
+**Danger zone.** The rows are the settings' `danger` list as it comes
+(`name`, `method`, `path`, `loses`, `available`): reset the database
+(`POST project/reset-database`, 202 with a detail the row shows and a link
+to the Overview's console, where the migrator's output goes), clear the
+log store, the inbox and the SQL history (204). `useDangerAction` runs
+whatever `method` and `path` say and invalidates what each clears.
+Unavailable rows are disabled with the reason on hover.
+
+**Mock mode.** `lib/api/mock/project.ts` keeps a `.env` in memory with the
+sample app's keys (secrets masked in the list), answers the settings from
+it, rewrites it on `PUT` with the editor's checks (identifier keys, no
+newlines) and `restart_needed: true` until the mock app restarts, answers
+the danger endpoints (the reset logs the drop and the migrator to the
+console), and keeps two service accounts with keys, one revoked.
+
 ## What Phase 0 leaves for later
 
 ## What Phase 1 leaves for later
@@ -1287,6 +1441,6 @@ merge is aborted. `resetMockGit` puts it back; `resetMock` calls it.
 - `/_dev/config` (the environment as the app read it) has a type and a
   mock but no page yet.
 - The generator endpoints have types and a mock; the job one has a UI
-  (Jobs, Phase 6), the resource and migration ones don't yet.
+  (Jobs, Phase 6); the rest got the hub in Phase 12.
 - The version in the shell reads `portal.version` (the orb version); the
   fallback before the portal answers is still `v0.1`.

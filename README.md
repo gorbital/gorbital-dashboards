@@ -55,7 +55,8 @@ limits.
 The Table Editor and the SQL Editor read and change the database through
 the portal's own API (`/_portal/api/db/*`); the Mail inbox and the
 Environment editor are the portal's too (`/_portal/api/mail*`,
-`/_portal/api/env*`).
+`/_portal/api/env*`), as are Generators and Project (`/_portal/api/generators/*`,
+`/_portal/api/project`).
 
 ## Run
 
@@ -159,7 +160,16 @@ driver and bucket with its status; a file browser in a list or a column view
 with upload and drag-and-drop, download, delete, move or rename, new folder;
 image, PDF and text previews; metadata; signed GET and PUT URLs with an
 expiry; a red banner and read-only mode for a bucket that isn't on this
-machine, until unlocked for the session).
+machine, until unlocked for the session), Generators (every generator `orb`
+offers as a card with a form and a diff preview before it writes: resource
+with a fields editor, migration, job, `orb add mail`, `orb add storage`,
+`orb add rls`, and `orb add orgs` as its dry run then its branch workflow;
+apply with allow-dirty, then restart or migrate), Project (the app as the
+manifest and `.env` describe it: name, module, preset, ports, database,
+mail delivery, storage driver, CORS origins, logging and docs, each edited
+through its env key with a restart offered; service accounts and API keys
+from the ops API; a danger zone: reset the database, clear the log store,
+the inbox and the SQL history, each confirmed with what it loses).
 
 **Observability Portal** · Overview, Requests (latency heatmap), Traces and a trace
 waterfall, Errors grouped by cause, Jobs and queues, Mail, Logs, Instances,

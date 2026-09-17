@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Boxes, Database, FileKey2, FolderOpen, GitBranch, KeyRound, LayoutDashboard, ListOrdered, Mail, Play, RotateCw, Route, ScrollText, ShieldCheck, SlidersHorizontal, Square, Zap } from "lucide-react";
+import { Activity, Boxes, Database, FileKey2, FolderOpen, GitBranch, KeyRound, LayoutDashboard, ListOrdered, Mail, Play, RotateCw, Route, ScrollText, Settings, ShieldCheck, SlidersHorizontal, Square, Wand2, Zap } from "lucide-react";
 import { CommandPalette, type CommandItem } from "@gorbital/dash/components/command";
 import { useAppAction, useCapabilities, useDevRoutes } from "@/lib/api/queries";
 
@@ -22,6 +22,8 @@ const pages: CommandItem[] = [
   { id: "page:database", label: "Database", hint: "/database", href: "/database", icon: <Database size={13} />, group: "Pages" },
   { id: "page:storage", label: "Storage", hint: "/storage", href: "/storage", icon: <FolderOpen size={13} />, group: "Pages", keywords: ["files", "bucket", "objects", "upload", "signed url", "s3"] },
   { id: "page:git", label: "Git", hint: "/git", href: "/git", icon: <GitBranch size={13} />, group: "Pages", keywords: ["commit", "branch", "diff", "stage", "push", "pull", "merge", "history", "log"] },
+  { id: "page:generators", label: "Generators", hint: "/generators", href: "/generators", icon: <Wand2 size={13} />, group: "Pages", keywords: ["orb gen", "orb add", "resource", "migration", "mail", "storage", "rls", "orgs", "scaffold"] },
+  { id: "page:project", label: "Project", hint: "/project", href: "/project", icon: <Settings size={13} />, group: "Pages", keywords: ["settings", "ports", "cors", "env", "keys", "service accounts", "danger", "reset database"] },
 ];
 
 /** The ⌘K palette with the pages, the app's live routes, and the app actions the portal offers. */
@@ -37,6 +39,10 @@ export function Search({ hint }: { hint: string }) {
   if (state === "running") actions.push({ id: "app:stop", label: "Stop the app", hint: "stays stopped", icon: <Square size={13} />, group: "App", onSelect: () => stop.mutate() });
   if (state === "stopped") actions.push({ id: "app:start", label: "Start the app", hint: "no rebuild", icon: <Play size={13} />, group: "App", onSelect: () => start.mutate() });
   if (status.data?.project.database) actions.push({ id: "jobs:new", label: "New job", hint: "form, CLI or code", icon: <Zap size={13} />, group: "App", href: "/jobs?new=1" });
+  for (const g of status.data?.generators ?? []) {
+    if (g === "job") continue;
+    actions.push({ id: `gen:${g}`, label: `Generate: ${g}`, hint: g.startsWith("add-") ? `orb add ${g.slice(4)}` : `orb gen ${g}`, icon: <Wand2 size={13} />, group: "App", href: `/generators?generator=${g}` });
+  }
   const routeItems: CommandItem[] = (routes.data?.routes ?? []).map((r) => ({
     id: `route:${r.method} ${r.path}`,
     label: `${r.method} ${r.path}`,

@@ -31,6 +31,7 @@ import {
   outputLines,
   portalStatus,
 } from "../../mock";
+import { mockGenerator, resetMockGenerators } from "./generators";
 import { initialJobSources, planJobMock, type PlannedJob } from "./jobs";
 import type {
   Accepted,
@@ -63,6 +64,7 @@ import { mockObservabilityFetch, resetObservabilityMock } from "./observability"
 import { mockEnvFetch, resetMockEnv } from "./env";
 import { mockFlagsFetch, resetMockFlags } from "./flags";
 import { deliverMockMail, mockMailFetch, mockMailPreviewFetch, resetMockMail } from "./mail";
+import { mockProjectFetch, mockRestarted, mockServiceAccountsFetch, resetMockProject } from "./project";
 import { mockSqlFetch } from "./sql";
 import { mockStorageFetch, resetMockStorage } from "./storage";
 import { mockDb } from "./schema";
@@ -121,6 +123,7 @@ async function restart() {
   addLine("orb", "built in 1.8s");
   const pid = 48000 + Math.floor(Math.random() * 900);
   setApp({ state: "running", pid, started_at: now(), restarts: app.restarts + 1 });
+  mockRestarted();
   addLine("orb", `starting app (pid ${pid}) on ${app.addr}`);
   await wait(300);
   addLine("app", 'level=INFO msg="listening" addr=127.0.0.1:8080');
@@ -196,6 +199,8 @@ export function resetMock() {
   resetMockFlags();
   resetMockStorage();
   resetMockGit();
+  resetMockGenerators();
+  resetMockProject();
 }
 
 /* ---------- Responses ---------- */
@@ -376,7 +381,7 @@ export async function mockFetch(input: string, init: RequestInit = {}): Promise<
     if (refused) return problemResponse(refused);
     return json({ accepted: true, app } satisfies Accepted, 202);
   }
-  const gen = /^\/_portal\/api\/generators\/([a-z]+)\/(plan|apply)$/.exec(p);
+  const gen = /^\/_portal\/api\/generators\/([a-z-]+)\/(plan|apply)$/.exec(p);
   if (gen && method === "POST") {
     if (!portalStatus.generators.includes(gen[1])) return problemResponse(problem(404, "generator_not_found", `no generator ${gen[1]}; this orb has: ${portalStatus.generators.join(", ")}`));
     const body = parseBody(init);
@@ -393,8 +398,12 @@ export async function mockFetch(input: string, init: RequestInit = {}): Promise<
       }
       return json(planned.response);
     }
+    const hub = mockGenerator(gen[1], gen[2] as "plan" | "apply", input, body.allow_dirty === true, addLine); // resource and the orb add commands (mock/generators.ts)
+    if (hub) return hub;
     return json(plan(gen[1], input, gen[2] === "apply"));
   }
+  const project = mockProjectFetch(url, method, init, app, addLine); // Project Settings, the env editor, the inbox's clear (mock/project.ts)
+  if (project) return project;
   if (p === "/_portal/api/jobs" && method === "GET") return json({ jobs: sources });
   if (p === "/_portal/api/logs" || p.startsWith("/_portal/api/logs/")) return mockLogsFetch(url, method, init); // the log store (mock/logs.ts)
   if (p === "/_portal/api/mail" || p.startsWith("/_portal/api/mail/")) return mockMailFetch(url, method, init); // the mail catcher (mock/mail.ts)
@@ -440,6 +449,7 @@ function opsProxy(path: string, query: URLSearchParams, method: string, init: Re
   if (path.startsWith("/ops/storage")) return mockStorageFetch(path, query, method, init) ?? problemResponse(problem(404, "not_found", `no route matches ${method} ${path}`)); // file storage (mock/storage.ts)
   const body = method === "GET" ? {} : parseBody(init);
   if (!body) return problemResponse(problem(422, "validation_failed", "the body must be JSON"));
+  if (path.startsWith("/ops/service-accounts")) return mockServiceAccountsFetch(path, method, body); // Project Settings' keys (mock/project.ts)
 
   // Accounts, sign-in methods and rate limiters (mock/auth.ts)
   const auth = mockAuthFetch(path, query, method, body);

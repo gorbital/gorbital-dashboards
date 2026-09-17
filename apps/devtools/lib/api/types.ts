@@ -77,7 +77,7 @@ export type Status = {
   project: Project;
   app: AppStatus;
   links: Partial<Record<LinkKey, string>> & Record<string, string>;
-  /** The generators this orb offers: job, resource, migration. */
+  /** The generators this orb offers: `add-mail`, `add-orgs`, `add-rls`, `add-storage`, `job`, `migration`, `resource` (ADR-0077). */
   generators: string[];
 };
 
@@ -114,7 +114,7 @@ export type PortalEvent =
 
 /* ---------- Generators ---------- */
 
-export type GeneratorName = "job" | "resource" | "migration";
+export type GeneratorName = "job" | "resource" | "migration" | "add-mail" | "add-storage" | "add-rls" | "add-orgs";
 
 export type GeneratorRequest<I extends object = Record<string, unknown>> = {
   /** The generator's fields, named like its CLI flags with underscores. */
@@ -126,6 +126,7 @@ export type GeneratorRequest<I extends object = Record<string, unknown>> = {
 export type PlanChange = {
   path: string;
   kind: "create" | "modify";
+  /** The file after the change; empty for the `add-orgs` dry run, which lists files without content. */
   content: string;
   /** The file's current content, for modify. */
   before?: string;
@@ -134,9 +135,11 @@ export type PlanChange = {
 export type Plan = {
   generator: string;
   name: string;
+  /** The CLI's confirmation text, pre-formatted (indented lines). */
   summary: string;
+  /** Go sends `null` when a plan writes nothing (an `add-orgs` dry run with nothing to do); `lib/api/generators.ts` normalises it to `[]` at the boundary. */
   changes: PlanChange[];
-  /** What to do after applying, in order. */
+  /** What to do after applying, in order; some generators send it pre-formatted (`lib/generators/plan.ts`). */
   next: string[];
   result?: unknown;
 };

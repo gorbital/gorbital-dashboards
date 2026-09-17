@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Check, Copy, Globe, Play, Search } from "lucide-react";
+import { Check, Copy, Globe, Info, Play, Search } from "lucide-react";
 import { Badge, Method, StatusCode } from "@gorbital/dash/components/badge";
 import { Button } from "@gorbital/dash/components/button";
 import { Code } from "@gorbital/dash/components/code";
@@ -28,7 +28,10 @@ import { RouteBadges, RouteDetails, RouteInfoStatus } from "./route-details";
 export function Routes() {
   const caps = useCapabilities();
   const routes = useDevRoutes(caps.console);
-  const info = useRouteInfo(caps.console);
+  // Without the running app there's no console list; the portal still reads the routes from the source (it builds the OpenAPI document itself).
+  const appState = caps.status.data?.app.state;
+  const fromSource = Boolean(caps.status.data) && !caps.running;
+  const info = useRouteInfo(caps.console || fromSource);
   const [tag, setTag] = useState<string>("all");
   const [source, setSource] = useState<RouteSourceFilter>("all");
   const [publicOnly, setPublicOnly] = useState(false);
@@ -45,7 +48,7 @@ export function Routes() {
   const shown = useMemo(() => filterRoutes(all, { tag, source, search, publicOnly }), [all, tag, source, search, publicOnly]);
   const selected = useMemo(() => all.find((r) => routeKey(r) === selectedKey), [all, selectedKey]);
   const guardsKnown = info.data?.guards_known ?? true;
-  const columns = useMemo(() => routeColumns(guardsKnown), [guardsKnown]);
+  const columns = useMemo(() => routeColumns(guardsKnown, !fromSource), [guardsKnown, fromSource]);
 
   const select = (r: JoinedRoute) => {
     const k = routeKey(r);
@@ -55,36 +58,9 @@ export function Routes() {
 
   const secured = all.filter((r) => r.secured).length;
   const publicCount = all.filter(isPublic).length;
-  const infoLoading = caps.console && info.isPending && info.fetchStatus !== "idle";
+  const infoLoading = (caps.console || fromSource) && info.isPending && info.fetchStatus !== "idle";
 
-  return (
-    <>
-      <Suspense fallback={null}>
-        <QueryParam name="route" onValue={onParam} />
-      </Suspense>
-      <PageHeader
-        product="devtools"
-        title="Routes"
-        description={routes.data ? `${all.length} routes · ${info.data ? `${publicCount} public · ` : ""}${secured} secured · from /_dev/routes and /_portal/api/routes` : "what the app serves, read from the running process and its source"}
-      >
-        <Pill caret={false} dot={publicOnly ? "ok" : undefined} active={publicOnly} onClick={() => setPublicOnly((v) => !v)} disabled={!info.data}>
-          <Globe size={12} /> Public{info.data ? <span className="font-mono text-[11px] text-dim tnum">{publicCount}</span> : null}
-        </Pill>
-        <Segmented<RouteSourceFilter>
-          options={[
-            { value: "all", label: "All" },
-            { value: "openapi", label: "OpenAPI" },
-            { value: "handler", label: "Handlers" },
-          ]}
-          value={source}
-          onChange={setSource}
-        />
-      </PageHeader>
-      <Page>
-        <Gate need="console" loading={<Table<JoinedRoute> columns={columns} rows={[]} rowKey={routeKey} loading />}>
-          {routes.error && !routes.data ? (
-            <ProblemPanel error={routes.error} scope="dev" console={caps.consoleDeclared} meta="GET /_dev/routes" onRetry={() => void routes.refetch()} retrying={routes.isFetching} />
-          ) : (
+  const grid = (
             <div className="grid grid-cols-[170px_minmax(0,1fr)_420px] gap-3">
               <aside className="flex flex-col gap-1">
                 <div className="mb-1 px-2 font-mono text-[10px] uppercase tracking-[0.12em] text-dim">Modules</div>
@@ -100,6 +76,14 @@ export function Routes() {
                   <Search size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-dim" />
                   <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="method, path, operation, guard, handler…" className="pl-7" aria-label="Search routes" />
                 </div>
+                {fromSource && (
+                  <div className="flex items-start gap-2 rounded-lg border border-hairline bg-bg/40 px-3 py-2 text-[11.5px] text-muted">
+                    <Info size={12} className="mt-0.5 shrink-0 text-primary" />
+                    <span>
+                      The app is {appState}, so this list comes from its source and OpenAPI document. Handlers outside the OpenAPI document appear once the app runs, and so does the request builder.
+                    </span>
+                  </div>
+                )}
                 <RouteInfoStatus loading={infoLoading} error={info.error} data={info.data} onRetry={() => void info.refetch()} retrying={info.isFetching} />
                 <Panel flush>
                   <Table<JoinedRoute>
@@ -108,7 +92,7 @@ export function Routes() {
                     rowKey={routeKey}
                     selected={selectedKey ?? undefined}
                     onRowClick={select}
-                    loading={routes.isPending}
+                    loading={fromSource ? infoLoading : routes.isPending}
                     dense
                     empty={<Empty title="No routes match" hint={all.length === 0 ? "The app declares no routes." : publicOnly ? "No public route matches: every other route needs a signed-in caller." : "Clear the search or pick another module."} />}
                   />
@@ -118,15 +102,56 @@ export function Routes() {
                 {selected ? (
                   <>
                     <RouteDetails route={selected} loading={infoLoading} failed={Boolean(info.error) && !info.data} guardsKnown={guardsKnown} />
-                    <RequestBuilder key={routeKey(selected)} route={selected} />
+                    {fromSource ? (
+                      <Panel title="Send a request">
+                        <p className="text-[11.5px] text-muted">The app must be running to send requests. It is {appState}; start it from the Overview.</p>
+                      </Panel>
+                    ) : (
+                      <RequestBuilder key={routeKey(selected)} route={selected} />
+                    )}
                   </>
                 ) : (
-                  <Empty title="Pick a route" hint="Select a row to see its guards and source, and to send a request through the portal." />
+                  <Empty title="Pick a route" hint={fromSource ? "Select a row to see its guards and source." : "Select a row to see its guards and source, and to send a request through the portal."} />
                 )}
               </aside>
             </div>
-          )}
-        </Gate>
+  );
+
+  return (
+    <>
+      <Suspense fallback={null}>
+        <QueryParam name="route" onValue={onParam} />
+      </Suspense>
+      <PageHeader
+        product="devtools"
+        title="Routes"
+        description={fromSource ? `${info.data ? `${all.length} routes · ${publicCount} public · ` : ""}from /_portal/api/routes · the app is ${appState}` : routes.data ? `${all.length} routes · ${info.data ? `${publicCount} public · ` : ""}${secured} secured · from /_dev/routes and /_portal/api/routes` : "what the app serves, read from the running process and its source"}
+      >
+        <Pill caret={false} dot={publicOnly ? "ok" : undefined} active={publicOnly} onClick={() => setPublicOnly((v) => !v)} disabled={!info.data}>
+          <Globe size={12} /> Public{info.data ? <span className="font-mono text-[11px] text-dim tnum">{publicCount}</span> : null}
+        </Pill>
+        <Segmented<RouteSourceFilter>
+          options={[
+            { value: "all", label: "All" },
+            { value: "openapi", label: "OpenAPI" },
+            { value: "handler", label: "Handlers" },
+          ]}
+          value={source}
+          onChange={setSource}
+        />
+      </PageHeader>
+      <Page>
+        {fromSource ? (
+          info.error && !info.data ? (
+            <ProblemPanel error={info.error} scope="portal" meta="GET /_portal/api/routes" onRetry={() => void info.refetch()} retrying={info.isFetching} />
+          ) : (
+            grid
+          )
+        ) : (
+          <Gate need="console" loading={<Table<JoinedRoute> columns={columns} rows={[]} rowKey={routeKey} loading />}>
+            {routes.error && !routes.data ? <ProblemPanel error={routes.error} scope="dev" console={caps.consoleDeclared} meta="GET /_dev/routes" onRetry={() => void routes.refetch()} retrying={routes.isFetching} /> : grid}
+          </Gate>
+        )}
       </Page>
     </>
   );
@@ -143,7 +168,7 @@ function TagItem({ label, count, active, onClick }: { label: string; count: numb
   );
 }
 
-function routeColumns(guardsKnown: boolean): Column<JoinedRoute>[] {
+function routeColumns(guardsKnown: boolean, consoleList: boolean): Column<JoinedRoute>[] {
   return [
     { key: "m", header: "Method", width: "76px", cell: (r) => <Method m={r.method} /> },
     {
@@ -175,7 +200,7 @@ function routeColumns(guardsKnown: boolean): Column<JoinedRoute>[] {
         </div>
       ),
     },
-    { key: "t", header: "Access and tags", width: "1%", cell: (r) => <RouteBadges route={r} guardsKnown={guardsKnown} /> },
+    { key: "t", header: "Access and tags", width: "1%", cell: (r) => <RouteBadges route={r} guardsKnown={guardsKnown} consoleList={consoleList} /> },
   ];
 }
 

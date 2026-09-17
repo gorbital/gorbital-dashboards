@@ -33,7 +33,8 @@ export function GuardBadge({ guard, truncate }: { guard: string; truncate?: bool
 }
 
 /** The list's badges: public (or secured), the guards that say more than that, at most `max` with a count for the rest. */
-export function RouteBadges({ route, guardsKnown, max = 2 }: { route: JoinedRoute; guardsKnown: boolean; max?: number }) {
+/** `consoleList` is false when the list comes from the source alone (the app isn't running): no "source only" badge then. */
+export function RouteBadges({ route, guardsKnown, consoleList = true, max = 2 }: { route: JoinedRoute; guardsKnown: boolean; consoleList?: boolean; max?: number }) {
   const info = route.info;
   const guards = info && guardsKnown ? listGuards(info.guards) : [];
   const shown = guards.slice(0, max);
@@ -52,7 +53,7 @@ export function RouteBadges({ route, guardsKnown, max = 2 }: { route: JoinedRout
         )
       )}
       {info?.deprecated && <Badge tone="danger">deprecated</Badge>}
-      {!route.inConsole && (
+      {consoleList && !route.inConsole && (
         <Tooltip content="In the source, but the running app doesn't serve it yet: it was added since the last build.">
           <span>
             <Badge tone="violet">source only</Badge>

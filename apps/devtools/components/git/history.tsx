@@ -154,7 +154,7 @@ function CommitSheet({ commit, onClose, onSelect, current, known }: { commit: Gi
                 v: commit.parents.length ? (
                   <span className="flex flex-wrap items-center gap-1.5">
                     {commit.parents.map((p) => (
-                      <button key={p} type="button" className={`inline-flex items-center gap-1 rounded-md border border-border px-1.5 py-0.5 font-mono text-[11px] ${known.has(p) ? "text-text hover:border-border-2" : "cursor-default text-dim"}`} onClick={() => onSelect(p)} title={known.has(p) ? known.get(p)?.subject : "not loaded: Load more first"}>
+                      <button key={p} type="button" className={`inline-flex items-center whitespace-nowrap gap-1 rounded-md border border-border px-1.5 py-0.5 font-mono text-[11px] ${known.has(p) ? "text-text hover:border-border-2" : "cursor-default text-dim"}`} onClick={() => onSelect(p)} title={known.has(p) ? known.get(p)?.subject : "not loaded: Load more first"}>
                         <GitCommitHorizontal size={10} /> {p.slice(0, 7)}
                       </button>
                     ))}

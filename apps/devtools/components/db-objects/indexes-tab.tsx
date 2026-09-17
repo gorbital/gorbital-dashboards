@@ -151,7 +151,7 @@ function NewIndexSheet({ schema, table, columns, open, onOpenChange, onPlan }: {
             {columns.map((c) => {
               const at = picked.indexOf(c.name);
               return (
-                <button key={c.name} type="button" onClick={() => toggle(c.name)} className={`inline-flex h-6 items-center gap-1 rounded-md border px-1.5 font-mono text-[11px] transition-colors ${at >= 0 ? "border-primary/40 bg-primary/10 text-text" : "border-border bg-elevated text-muted hover:border-border-2"}`}>
+                <button key={c.name} type="button" onClick={() => toggle(c.name)} className={`inline-flex h-6 items-center whitespace-nowrap gap-1 rounded-md border px-1.5 font-mono text-[11px] transition-colors ${at >= 0 ? "border-primary/40 bg-primary/10 text-text" : "border-border bg-elevated text-muted hover:border-border-2"}`}>
                   {at >= 0 && <span className="text-[9px] text-primary tnum">{at + 1}</span>}
                   {c.name}
                   <span className="text-[9.5px] text-dim">{c.data_type}</span>

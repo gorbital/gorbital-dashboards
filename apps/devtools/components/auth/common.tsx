@@ -50,7 +50,7 @@ export function UserBadges({ user, reason = true }: { user: OpsUser; reason?: bo
 /** A role as a chip, optionally with a remove button. */
 export function RoleChip({ role, onRemove, removing }: { role: string; onRemove?: () => void; removing?: boolean }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-md border border-primary/25 bg-primary/12 px-1.5 py-0.5 font-mono text-[11px] text-primary">
+    <span className="inline-flex items-center whitespace-nowrap gap-1 rounded-md border border-primary/25 bg-primary/12 px-1.5 py-0.5 font-mono text-[11px] text-primary">
       {role}
       {onRemove && (
         <button type="button" onClick={onRemove} disabled={removing} className="-mr-0.5 grid h-3.5 w-3.5 place-items-center rounded text-primary/70 hover:bg-primary/20 hover:text-primary disabled:opacity-50" aria-label={`Revoke ${role}`}>

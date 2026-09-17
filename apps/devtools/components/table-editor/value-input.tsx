@@ -23,7 +23,7 @@ type Props = {
   className?: string;
 };
 
-const chip = "h-5 rounded-md border px-1.5 font-mono text-[10px] uppercase tracking-wider transition-colors disabled:opacity-40";
+const chip = "h-5 whitespace-nowrap rounded-md border px-1.5 font-mono text-[10px] uppercase tracking-wider transition-colors disabled:opacity-40";
 const chipOff = `${chip} border-border text-dim hover:border-border-2 hover:text-text`;
 const chipOn = `${chip} border-primary/40 bg-primary/10 text-primary`;
 

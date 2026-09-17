@@ -136,8 +136,9 @@ describe("test sign-in in mock mode", () => {
     expect(await code(res)).toBe("test_not_found");
   });
 
-  it("lists the endpoint in the console index", async () => {
-    const index = (await (await get("/_portal/app/_dev/")).json()) as { endpoints: string[] };
-    expect(index.endpoints).toContain("/_dev/auth/test");
+  it("lists the tests as an extension in the console index", async () => {
+    const index = (await (await get("/_portal/app/_dev/")).json()) as { endpoints: string[]; extensions: string[] };
+    expect(index.extensions).toEqual(["/_dev/auth/test/"]);
+    expect(index.endpoints).not.toContain("/_dev/auth/test");
   });
 });

@@ -471,7 +471,7 @@ function appProxy(path: string, query: URLSearchParams, method: string, init: Re
   if (signInTest) return signInTest;
   if (method !== "GET" && method !== "HEAD") return problemResponse(problem(405, "method_not_allowed", "the dev console accepts GET only"));
   const dev: Record<string, unknown> = {
-    "/_dev/": { endpoints: ["/_dev/", "/_dev/app", "/_dev/auth/test", "/_dev/config", "/_dev/jobs", "/_dev/logs", "/_dev/logs/stream", "/_dev/mail", "/_dev/mail/preview", "/_dev/mail/preview/send", "/_dev/mail/previews", "/_dev/migrations", "/_dev/openapi.json", "/_dev/requests", "/_dev/requests/stream", "/_dev/routes"] },
+    "/_dev/": { extensions: ["/_dev/auth/test/"], endpoints: ["/_dev/", "/_dev/app", "/_dev/config", "/_dev/jobs", "/_dev/logs", "/_dev/logs/stream", "/_dev/mail", "/_dev/mail/preview", "/_dev/mail/preview/send", "/_dev/mail/previews", "/_dev/migrations", "/_dev/openapi.json", "/_dev/requests", "/_dev/requests/stream", "/_dev/routes"] },
     "/_dev/app": devApp,
     "/_dev/routes": mockDevRoutes,
     "/_dev/config": devConfig,

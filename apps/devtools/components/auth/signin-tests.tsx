@@ -6,7 +6,7 @@ import { AlertTriangle, CircleCheck, CircleMinus, CircleX, ExternalLink, Fingerp
 import { Badge } from "@gorbital/dash/components/badge";
 import { Button } from "@gorbital/dash/components/button";
 import { Field, Input, Textarea } from "@gorbital/dash/components/input";
-import { Panel } from "@gorbital/dash/components/panel";
+import { Empty, Panel } from "@gorbital/dash/components/panel";
 import { Skeleton, Spinner } from "@gorbital/dash/components/spinner";
 import { ApiError } from "@/lib/api/client";
 import { errorMessage } from "@/lib/api/errors";
@@ -55,6 +55,14 @@ export function SignInTests({ enabled, consoleDeclared, focus }: { enabled: bool
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [focus, loaded]);
 
+  if (tests.error && !tests.data && tests.error instanceof ApiError && tests.error.status === 404) {
+    return (
+      <Empty
+        title="This app's sign-in has no tests"
+        hint="Sign-in tests come with sign-in from the library, gorbital.WithAuth(authhttp.New()), while the dev console is on. An app created with orb v0.1 generates its own sign-in, which doesn't serve /_dev/auth/test."
+      />
+    );
+  }
   if (tests.error && !tests.data) {
     return <ProblemPanel error={tests.error} scope="dev" console={consoleDeclared} meta="GET /_dev/auth/test" onRetry={() => void tests.refetch()} retrying={tests.isFetching} />;
   }

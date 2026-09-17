@@ -12,7 +12,7 @@
  * answer 202 and the outcome shows up in `db/migrations` a moment later.
  */
 
-import { useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "@gorbital/dash/components/toast";
 import { ApiError, NotConnectedError, apiFetch } from "./client";
 import { keys } from "./queries";
@@ -351,24 +351,36 @@ export function describeError(err: unknown): string {
 
 /* ---------- Reads ---------- */
 
-export function useSchemas(enabled = true) {
-  return useQuery({
+/*
+ * The Table Editor (db.ts) reads the same endpoints under the same keys, so
+ * the cache must hold the same value for both: the response as the portal
+ * sends it. Each hook picks its list with select. Caching the list here and
+ * the response there made the Schema screen crash when opened from the Table
+ * Editor ("(data ?? []).filter is not a function").
+ */
+
+/** The query of GET /db/schemas, shared with the Table Editor. */
+export const schemasQuery = () =>
+  queryOptions({
     queryKey: dbKeys.schemas,
-    queryFn: () => apiFetch<{ schemas: DbSchema[] }>(`${DB}/schemas`).then((r) => r.schemas),
-    enabled,
-    staleTime: 60_000,
-    retry,
+    queryFn: () => apiFetch<{ schemas: DbSchema[] }>(`${DB}/schemas`),
+    select: (r) => r.schemas,
   });
+
+/** The query of GET /db/tables for schemas, shared with the Table Editor. */
+export const tablesQuery = (schemas: string[]) =>
+  queryOptions({
+    queryKey: dbKeys.tables(schemas),
+    queryFn: () => apiFetch<{ tables: DbTable[] }>(`${DB}/tables${schemaQuery(schemas)}`),
+    select: (r) => r.tables,
+  });
+
+export function useSchemas(enabled = true) {
+  return useQuery({ ...schemasQuery(), enabled, staleTime: 60_000, retry });
 }
 
 export function useTables(schemas: string[], enabled = true) {
-  return useQuery({
-    queryKey: dbKeys.tables(schemas),
-    queryFn: () => apiFetch<{ tables: DbTable[] }>(`${DB}/tables${schemaQuery(schemas)}`).then((r) => r.tables),
-    enabled: enabled && schemas.length > 0,
-    staleTime: 15_000,
-    retry,
-  });
+  return useQuery({ ...tablesQuery(schemas), enabled: enabled && schemas.length > 0, staleTime: 15_000, retry });
 }
 
 export function useTableDetail(schema: string | undefined, table: string | undefined) {

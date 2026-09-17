@@ -10,7 +10,7 @@
  * `null`. The UI edits text and sends text; PostgreSQL parses it.
  */
 
-import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "@gorbital/dash/components/toast";
 import { ApiError, NotConnectedError, apiFetch } from "./client";
 import { dataMode } from "./mode";
@@ -359,27 +359,29 @@ function retry(count: number, err: Error) {
 
 const schemasQuery = (schemas: string[]) => (schemas.length ? "?" + schemas.map((s) => `schema=${encodeURIComponent(s)}`).join("&") : "");
 
-export function useSchemas(enabled = true) {
-  return useQuery({
+/** The query of GET /db/schemas. The Schema screen (schema.ts) shares its key, so both cache the response as sent. */
+export const schemasQueryOptions = () =>
+  queryOptions({
     queryKey: dbKeys.schemas,
     queryFn: () => apiFetch<{ schemas: Schema[] }>(`${base}/schemas`),
     select: (d) => d.schemas,
-    staleTime: 30_000,
-    enabled,
-    retry,
   });
+
+/** The query of GET /db/tables. The Schema screen (schema.ts) shares its key, so both cache the response as sent. */
+export const tablesQueryOptions = (schemas: string[]) =>
+  queryOptions({
+    queryKey: dbKeys.tables(schemas),
+    queryFn: () => apiFetch<{ tables: Table[] }>(`${base}/tables${schemasQuery(schemas)}`),
+    select: (d) => d.tables,
+  });
+
+export function useSchemas(enabled = true) {
+  return useQuery({ ...schemasQueryOptions(), staleTime: 30_000, enabled, retry });
 }
 
 /** The relations of `schemas`; none means every non-system schema. */
 export function useTables(schemas: string[], enabled = true) {
-  return useQuery({
-    queryKey: dbKeys.tables(schemas),
-    queryFn: () => apiFetch<{ tables: Table[] }>(`${base}/tables${schemasQuery(schemas)}`),
-    select: (d) => d.tables,
-    staleTime: 15_000,
-    enabled,
-    retry,
-  });
+  return useQuery({ ...tablesQueryOptions(schemas), staleTime: 15_000, enabled, retry });
 }
 
 export function useTableDetail(schema: string | undefined, table: string | undefined) {

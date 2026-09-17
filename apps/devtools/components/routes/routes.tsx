@@ -2,72 +2,75 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Check, Copy, Lock, Play, Search } from "lucide-react";
+import { Check, Copy, Globe, Play, Search } from "lucide-react";
 import { Badge, Method, StatusCode } from "@gorbital/dash/components/badge";
 import { Button } from "@gorbital/dash/components/button";
 import { Code } from "@gorbital/dash/components/code";
 import { Field, Input, Select, Textarea } from "@gorbital/dash/components/input";
 import { Page, PageHeader } from "@gorbital/dash/components/page";
 import { Empty, Panel } from "@gorbital/dash/components/panel";
-import { Segmented } from "@gorbital/dash/components/pill";
+import { Pill, Segmented } from "@gorbital/dash/components/pill";
 import { SkeletonLines } from "@gorbital/dash/components/spinner";
-import { Table } from "@gorbital/dash/components/table";
+import { Table, type Column } from "@gorbital/dash/components/table";
 import { fmtBytes, fmtMs } from "@gorbital/dash/lib/format";
 import { readBearerToken } from "@/lib/api/bearer-token";
 import { useCapabilities, useDevRoutes } from "@/lib/api/queries";
 import { methodsWithBody, pathParams, proxyAddsAuth, sendRequest, type AuthMode, type KeyValue, type RequestSpec, type SentRequest } from "@/lib/api/request-builder";
-import type { DevRoute } from "@/lib/api/types";
+import { useRouteInfo } from "@/lib/api/routes";
+import { filterRoutes, isPublic, joinRoutes, routeKey, routeTags, type JoinedRoute, type RouteSourceFilter } from "@/lib/routes/join";
 import { clock } from "@/lib/time";
 import { Gate } from "@/components/shared/gate";
 import { KeyValueEditor } from "@/components/shared/kv-editor";
 import { ProblemPanel } from "@/components/shared/problem-panel";
 import { QueryParam, setQueryParam } from "@/components/shared/query-param";
-
-type Source = "all" | "openapi" | "handler";
-
-const routeKey = (r: DevRoute) => `${r.method} ${r.path}`;
+import { RouteBadges, RouteDetails, RouteInfoStatus } from "./route-details";
 
 export function Routes() {
   const caps = useCapabilities();
   const routes = useDevRoutes(caps.console);
+  const info = useRouteInfo(caps.console);
   const [tag, setTag] = useState<string>("all");
-  const [source, setSource] = useState<Source>("all");
+  const [source, setSource] = useState<RouteSourceFilter>("all");
+  const [publicOnly, setPublicOnly] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const onParam = useCallback((v: string | null) => setSelectedKey(v), []);
 
-  const all = useMemo(() => routes.data?.routes ?? [], [routes.data]);
+  const all = useMemo(() => joinRoutes(routes.data?.routes ?? [], info.data?.routes), [routes.data, info.data]);
   const tags = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const r of all) for (const t of r.tags.length ? r.tags : ["(untagged)"]) counts.set(t, (counts.get(t) ?? 0) + 1);
+    for (const r of all) for (const t of routeTags(r)) counts.set(t, (counts.get(t) ?? 0) + 1);
     return [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [all]);
-  const shown = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return all.filter((r) => {
-      if (tag !== "all" && !(r.tags.length ? r.tags : ["(untagged)"]).includes(tag)) return false;
-      if (source !== "all" && r.source !== source) return false;
-      if (q && !`${r.method} ${r.path} ${r.operation_id ?? ""} ${r.summary ?? ""} ${r.tags.join(" ")}`.toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [all, tag, source, search]);
+  const shown = useMemo(() => filterRoutes(all, { tag, source, search, publicOnly }), [all, tag, source, search, publicOnly]);
   const selected = useMemo(() => all.find((r) => routeKey(r) === selectedKey), [all, selectedKey]);
+  const guardsKnown = info.data?.guards_known ?? true;
+  const columns = useMemo(() => routeColumns(guardsKnown), [guardsKnown]);
 
-  const select = (r: DevRoute) => {
+  const select = (r: JoinedRoute) => {
     const k = routeKey(r);
     setSelectedKey(k);
     setQueryParam("route", k);
   };
 
   const secured = all.filter((r) => r.secured).length;
+  const publicCount = all.filter(isPublic).length;
+  const infoLoading = caps.console && info.isPending && info.fetchStatus !== "idle";
 
   return (
     <>
       <Suspense fallback={null}>
         <QueryParam name="route" onValue={onParam} />
       </Suspense>
-      <PageHeader product="devtools" title="Routes" description={routes.data ? `${all.length} routes · ${secured} secured · from /_dev/routes` : "what the app serves, read from the running process"}>
-        <Segmented<Source>
+      <PageHeader
+        product="devtools"
+        title="Routes"
+        description={routes.data ? `${all.length} routes · ${info.data ? `${publicCount} public · ` : ""}${secured} secured · from /_dev/routes and /_portal/api/routes` : "what the app serves, read from the running process and its source"}
+      >
+        <Pill caret={false} dot={publicOnly ? "ok" : undefined} active={publicOnly} onClick={() => setPublicOnly((v) => !v)} disabled={!info.data}>
+          <Globe size={12} /> Public{info.data ? <span className="font-mono text-[11px] text-dim tnum">{publicCount}</span> : null}
+        </Pill>
+        <Segmented<RouteSourceFilter>
           options={[
             { value: "all", label: "All" },
             { value: "openapi", label: "OpenAPI" },
@@ -78,7 +81,7 @@ export function Routes() {
         />
       </PageHeader>
       <Page>
-        <Gate need="console" loading={<Table<DevRoute> columns={columns} rows={[]} rowKey={routeKey} loading />}>
+        <Gate need="console" loading={<Table<JoinedRoute> columns={columns} rows={[]} rowKey={routeKey} loading />}>
           {routes.error && !routes.data ? (
             <ProblemPanel error={routes.error} scope="dev" console={caps.consoleDeclared} meta="GET /_dev/routes" onRetry={() => void routes.refetch()} retrying={routes.isFetching} />
           ) : (
@@ -95,10 +98,11 @@ export function Routes() {
               <div className="flex min-w-0 flex-col gap-2">
                 <div className="relative">
                   <Search size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-dim" />
-                  <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="method, path, operation, summary…" className="pl-7" aria-label="Search routes" />
+                  <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="method, path, operation, guard, handler…" className="pl-7" aria-label="Search routes" />
                 </div>
+                <RouteInfoStatus loading={infoLoading} error={info.error} data={info.data} onRetry={() => void info.refetch()} retrying={info.isFetching} />
                 <Panel flush>
-                  <Table<DevRoute>
+                  <Table<JoinedRoute>
                     columns={columns}
                     rows={shown}
                     rowKey={routeKey}
@@ -106,11 +110,20 @@ export function Routes() {
                     onRowClick={select}
                     loading={routes.isPending}
                     dense
-                    empty={<Empty title="No routes match" hint={all.length === 0 ? "The app declares no routes." : "Clear the search or pick another module."} />}
+                    empty={<Empty title="No routes match" hint={all.length === 0 ? "The app declares no routes." : publicOnly ? "No public route matches: every other route needs a signed-in caller." : "Clear the search or pick another module."} />}
                   />
                 </Panel>
               </div>
-              <aside className="flex flex-col gap-3">{selected ? <RequestBuilder key={routeKey(selected)} route={selected} /> : <Empty title="Pick a route" hint="Select a row to build and send a request through the portal." />}</aside>
+              <aside className="flex min-w-0 flex-col gap-3">
+                {selected ? (
+                  <>
+                    <RouteDetails route={selected} loading={infoLoading} failed={Boolean(info.error) && !info.data} guardsKnown={guardsKnown} />
+                    <RequestBuilder key={routeKey(selected)} route={selected} />
+                  </>
+                ) : (
+                  <Empty title="Pick a route" hint="Select a row to see its guards and source, and to send a request through the portal." />
+                )}
+              </aside>
             </div>
           )}
         </Gate>
@@ -130,61 +143,47 @@ function TagItem({ label, count, active, onClick }: { label: string; count: numb
   );
 }
 
-const columns = [
-  { key: "m", header: "Method", width: "76px", cell: (r: DevRoute) => <Method m={r.method} /> },
-  {
-    key: "p",
-    header: "Path",
-    cell: (r: DevRoute) => (
-      <div className="min-w-0">
-        <div className="font-mono text-text">
-          {r.path.split(/(\{[^}]+\})/).map((part, i) =>
-            part.startsWith("{") ? (
-              <span key={i} className="text-primary/80">
-                {part}
-              </span>
-            ) : (
-              part
-            ),
+function routeColumns(guardsKnown: boolean): Column<JoinedRoute>[] {
+  return [
+    { key: "m", header: "Method", width: "76px", cell: (r) => <Method m={r.method} /> },
+    {
+      key: "p",
+      header: "Path",
+      cell: (r) => (
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-1.5 font-mono text-text">
+            {isPublic(r) && <Globe size={11} className="shrink-0 text-ok" aria-label="public" />}
+            <span className={`min-w-0 truncate ${r.info?.deprecated ? "line-through decoration-dim" : ""}`}>
+              {r.path.split(/(\{[^}]+\})/).map((part, i) =>
+                part.startsWith("{") ? (
+                  <span key={i} className="text-primary/80">
+                    {part}
+                  </span>
+                ) : (
+                  part
+                ),
+              )}
+            </span>
+          </div>
+          {(r.operation_id || r.summary) && (
+            <div className="mt-0.5 truncate text-[11px] text-dim">
+              {r.operation_id && <span className="font-mono">{r.operation_id}</span>}
+              {r.operation_id && r.summary && " · "}
+              {r.summary}
+            </div>
           )}
         </div>
-        {(r.operation_id || r.summary) && (
-          <div className="mt-0.5 truncate text-[11px] text-dim">
-            {r.operation_id && <span className="font-mono">{r.operation_id}</span>}
-            {r.operation_id && r.summary && " · "}
-            {r.summary}
-          </div>
-        )}
-      </div>
-    ),
-  },
-  {
-    key: "t",
-    header: "Tags",
-    width: "1%",
-    cell: (r: DevRoute) => (
-      <span className="flex flex-nowrap gap-1">
-        {r.secured && (
-          <Badge tone="warn">
-            <Lock size={9} /> secured
-          </Badge>
-        )}
-        {r.tags.map((t) => (
-          <Badge key={t} tone="info">
-            {t}
-          </Badge>
-        ))}
-        {r.source === "handler" && <Badge tone="muted">handler</Badge>}
-      </span>
-    ),
-  },
-];
+      ),
+    },
+    { key: "t", header: "Access and tags", width: "1%", cell: (r) => <RouteBadges route={r} guardsKnown={guardsKnown} /> },
+  ];
+}
 
 /* ---------- The request builder ---------- */
 
 let nextSentId = 1;
 
-function RequestBuilder({ route }: { route: DevRoute }) {
+function RequestBuilder({ route }: { route: JoinedRoute }) {
   const params = pathParams(route.path);
   const [pathValues, setPathValues] = useState<Record<string, string>>({});
   const [query, setQuery] = useState<KeyValue[]>([]);

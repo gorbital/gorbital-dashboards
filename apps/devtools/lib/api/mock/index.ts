@@ -14,7 +14,6 @@ import {
   devMail,
   devMigrations,
   devRequests,
-  devRoutes,
   liveLogs,
   liveOutputLines,
   liveRequests,
@@ -32,6 +31,7 @@ import {
   portalStatus,
 } from "../../mock";
 import { mockGenerator, resetMockGenerators } from "./generators";
+import { mockDevRoutes, mockRoutesFetch, resetMockRoutes } from "./routes";
 import { initialJobSources, planJobMock, type PlannedJob } from "./jobs";
 import type {
   Accepted,
@@ -230,6 +230,7 @@ export function resetMock() {
   resetMockStorage();
   resetMockGit();
   resetMockGenerators();
+  resetMockRoutes();
   resetMockProject();
 }
 
@@ -396,6 +397,8 @@ export async function mockFetch(input: string, init: RequestInit = {}): Promise<
   if (observability) return observability; // health, the machine, db/stats, db/statements, db/advice and /ops/observability/* (mock/observability.ts)
   const db = await mockDb(url, method, init, app);
   if (db) return db; // the database, migrate and migration-generator endpoints (mock/schema.ts)
+  const routeList = await mockRoutesFetch(p, method); // guards, middleware and source positions (mock/routes.ts)
+  if (routeList) return routeList;
   if (p === "/_portal/api/status") return json({ ...portalStatus, app } satisfies Status);
   if (p === "/_portal/api/session") return json({ ok: true });
   if (p === "/_portal/api/output") {
@@ -462,7 +465,7 @@ function appProxy(path: string, query: URLSearchParams, method: string, init: Re
   const dev: Record<string, unknown> = {
     "/_dev/": { endpoints: ["/_dev/", "/_dev/app", "/_dev/config", "/_dev/jobs", "/_dev/logs", "/_dev/logs/stream", "/_dev/mail", "/_dev/mail/preview", "/_dev/mail/preview/send", "/_dev/mail/previews", "/_dev/migrations", "/_dev/openapi.json", "/_dev/requests", "/_dev/requests/stream", "/_dev/routes"] },
     "/_dev/app": devApp,
-    "/_dev/routes": devRoutes,
+    "/_dev/routes": mockDevRoutes,
     "/_dev/config": devConfig,
     "/_dev/requests": devRequests,
     "/_dev/logs": devLogs,

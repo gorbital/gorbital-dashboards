@@ -35,7 +35,7 @@ export function Sidebar({ schema, table, onSchema, onTable, onNewTable }: Props)
   }, [tables.data, q]);
 
   return (
-    <aside className="flex w-[248px] shrink-0 flex-col border-r border-hairline bg-bg/30">
+    <aside className="flex w-[272px] shrink-0 flex-col overflow-hidden border-r border-hairline bg-bg/30">
       <div className="grid gap-2 border-b border-hairline p-3">
         <div className="flex items-center gap-2">
           <Select value={current ?? ""} onChange={(e) => onSchema(e.target.value)} aria-label="Schema" disabled={!visibleSchemas.length}>
@@ -59,7 +59,7 @@ export function Sidebar({ schema, table, onSchema, onTable, onNewTable }: Props)
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search tables" className="pl-7" aria-label="Search tables" />
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-2">
         {schemas.error && !schemas.data && <ProblemNote error={schemas.error} />}
         {tables.error && !tables.data && <ProblemNote error={tables.error} />}
         {(tables.isPending || schemas.isPending) && !tables.data && !tables.error && !schemas.error && (
@@ -70,7 +70,8 @@ export function Sidebar({ schema, table, onSchema, onTable, onNewTable }: Props)
           </div>
         )}
         {tables.data && list.length === 0 && <div className="px-2 py-4 text-center text-[11.5px] text-dim">{q ? "No table matches." : "No tables in this schema yet."}</div>}
-        <ul className="grid gap-px">
+        {/* Grid items default to min-width: auto, which would let a long name push the badge past the edge. */}
+        <ul className="grid gap-px [&>li]:min-w-0">
           {list.map((t) => {
             const active = t.schema === schema && t.name === table;
             return (
@@ -80,7 +81,7 @@ export function Sidebar({ schema, table, onSchema, onTable, onNewTable }: Props)
                   onClick={() => onTable(t.schema, t.name)}
                   aria-current={active ? "page" : undefined}
                   className={`group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[12px] transition-colors ${active ? "bg-elevated text-text" : "text-muted hover:bg-elevated/60 hover:text-text"}`}
-                  title={t.comment ?? `${kindLabels[t.kind]} · ${t.size}`}
+                  title={`${t.name}${t.comment ? ` · ${t.comment}` : ""} · ${kindLabels[t.kind]} · ${t.size}`}
                 >
                   <KindIcon kind={t.kind} className={active ? "text-primary" : "text-dim group-hover:text-muted"} />
                   <span className="min-w-0 flex-1 truncate font-mono">{t.name}</span>

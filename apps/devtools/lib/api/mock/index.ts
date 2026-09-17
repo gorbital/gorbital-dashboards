@@ -67,6 +67,7 @@ import { deliverMockMail, mockMailFetch, mockMailPreviewFetch, resetMockMail } f
 import { mockProjectFetch, mockRestarted, mockServiceAccountsFetch, resetMockProject } from "./project";
 import { mockSqlFetch } from "./sql";
 import { mockTunnelFetch, resetMockTunnel } from "./tunnel";
+import { mockSignInTestsFetch, resetMockSignInTests } from "./signin-tests";
 import { mockStorageFetch, resetMockStorage } from "./storage";
 import { mockDb, mockSchemaRestarted, resetMockDb as resetMockSchema, schemaStatus, setSchemaListener, startSchemaDemo, type SchemaDemo } from "./schema";
 
@@ -234,6 +235,7 @@ export function resetMock() {
   resetMockRoutes();
   resetMockProject();
   resetMockTunnel();
+  resetMockSignInTests();
 }
 
 /* ---------- Responses ---------- */
@@ -465,9 +467,11 @@ function appProxy(path: string, query: URLSearchParams, method: string, init: Re
   if (!app.console || !path.startsWith("/_dev")) return problemResponse(problem(404, "not_found", `no route matches ${method} ${path}`));
   const preview = mockMailPreviewFetch(path, query, method); // the previews and their send (mock/mail.ts)
   if (preview) return preview;
+  const signInTest = mockSignInTestsFetch(path, method, init.body); // Test sign-in (mock/signin-tests.ts)
+  if (signInTest) return signInTest;
   if (method !== "GET" && method !== "HEAD") return problemResponse(problem(405, "method_not_allowed", "the dev console accepts GET only"));
   const dev: Record<string, unknown> = {
-    "/_dev/": { endpoints: ["/_dev/", "/_dev/app", "/_dev/config", "/_dev/jobs", "/_dev/logs", "/_dev/logs/stream", "/_dev/mail", "/_dev/mail/preview", "/_dev/mail/preview/send", "/_dev/mail/previews", "/_dev/migrations", "/_dev/openapi.json", "/_dev/requests", "/_dev/requests/stream", "/_dev/routes"] },
+    "/_dev/": { endpoints: ["/_dev/", "/_dev/app", "/_dev/auth/test", "/_dev/config", "/_dev/jobs", "/_dev/logs", "/_dev/logs/stream", "/_dev/mail", "/_dev/mail/preview", "/_dev/mail/preview/send", "/_dev/mail/previews", "/_dev/migrations", "/_dev/openapi.json", "/_dev/requests", "/_dev/requests/stream", "/_dev/routes"] },
     "/_dev/app": devApp,
     "/_dev/routes": mockDevRoutes,
     "/_dev/config": devConfig,

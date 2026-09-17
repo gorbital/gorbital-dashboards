@@ -21,7 +21,7 @@ export function Pill({ children, dot, active, caret = true, className = "", onCl
       onClick={onClick}
       disabled={disabled}
       aria-pressed={active}
-      className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[12px] font-medium transition-colors disabled:opacity-50 ${
+      className={`inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-[12px] font-medium transition-colors disabled:opacity-50 ${
         active ? "border-primary/40 bg-primary/10 text-text" : "border-border bg-surface text-muted hover:border-border-2 hover:text-text"
       } ${className}`}
     >

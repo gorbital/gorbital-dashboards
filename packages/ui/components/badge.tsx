@@ -13,7 +13,7 @@ const tones: Record<Tone, string> = {
 
 export function Badge({ tone = "muted", children, mono = true, className = "" }: { tone?: Tone; children: ReactNode; mono?: boolean; className?: string }) {
   return (
-    <span className={`inline-flex h-[20px] items-center gap-1 rounded-md border px-1.5 text-[11px] leading-none ${mono ? "font-mono" : "font-medium"} ${tones[tone]} ${className}`}>
+    <span className={`inline-flex h-[20px] shrink-0 items-center gap-1 whitespace-nowrap rounded-md border px-1.5 text-[11px] leading-none ${mono ? "font-mono" : "font-medium"} ${tones[tone]} ${className}`}>
       {children}
     </span>
   );

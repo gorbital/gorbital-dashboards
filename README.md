@@ -11,12 +11,12 @@ theme and one component package.
 
 The folder and package names (`devtools`, `observe`, `deploy`) are the
 stable identifiers; the product names live in one place,
-`packages/ui/lib/products.ts`, and every shell, title and switcher reads
+`packages/ui/lib/products.ts`, and every shell and title reads
 them from there. Rename a product by editing that file.
 
 `packages/ui` (`@gorbital/dash`) holds the dashboard shell in three variants
 (`boxed` for Dev Portal, `docked` for Observability, `rail` for Deployment),
-the page header, the product switcher, the primitives (tiles, panels, tables,
+the page header, the primitives (tiles, panels, tables,
 badges, pills, buttons, code blocks, inputs, dialogs, sheets, dropdowns, tabs,
 tooltips, toasts, the ⌘K palette, spinners and skeletons) and the SVG charts
 (sparkline, area, stacked bars, donut, heatmap, trace waterfall). Colours

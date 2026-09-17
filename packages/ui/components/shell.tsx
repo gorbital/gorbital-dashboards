@@ -41,32 +41,15 @@ export function Shell(props: Props) {
 
 function Switcher({ product, version, compact }: { product: ProductId; version?: ReactNode; compact?: boolean }) {
   const p = products[product];
-  const others = (Object.keys(products) as ProductId[]).filter((id) => id !== product);
   return (
-    <div className="relative flex items-center gap-2.5">
+    <div className="flex items-center gap-2.5">
       <Mark className="h-[17px]" />
       {!compact && (
         <>
           <span className="font-brand whitespace-nowrap text-[15px] font-bold leading-none tracking-[-0.03em]">{p.name}</span>
           {version && <span className="font-mono text-[11px] text-dim">{version}</span>}
-          <ChevronDown size={12} className="text-dim" />
         </>
       )}
-      <details className="absolute inset-0">
-        <summary className="block h-full w-full cursor-pointer list-none [&::-webkit-details-marker]:hidden" aria-label="Switch tool" />
-        <div className="absolute left-0 top-full z-30 mt-2 w-[240px] rounded-xl border border-border bg-elevated p-1.5 shadow-2xl shadow-umbra/50">
-          {[p, ...others.map((id) => products[id])].map((q) => (
-            <a
-              key={q.id}
-              href={q.id === product ? "#" : q.url}
-              className={`flex items-center justify-between rounded-lg px-2.5 py-2 text-[12px] ${q.id === product ? "bg-raised text-text" : "text-muted hover:bg-raised hover:text-text"}`}
-            >
-              <span className="font-semibold tracking-tight">{q.name}</span>
-              <span className="font-mono text-[10px] text-dim">{q.kind}</span>
-            </a>
-          ))}
-        </div>
-      </details>
     </div>
   );
 }

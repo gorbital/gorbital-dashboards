@@ -58,16 +58,17 @@ describe("mockFetch", () => {
     expect((await mockFetch("/_portal/api/nothing")).status).toBe(404);
   });
 
-  it("streams a bare state event first", async () => {
+  it("streams a bare state event first, then the schema status", async () => {
     const ac = new AbortController();
     const res = await mockFetch("/_portal/api/events", { signal: ac.signal });
     expect(res.headers.get("content-type")).toBe("text/event-stream");
     const reader = res.body!.getReader();
     const dec = new TextDecoder();
     let text = "";
-    while (!text.includes("event: state")) text += dec.decode((await reader.read()).value);
+    while (!text.includes("event: schema")) text += dec.decode((await reader.read()).value);
     expect(text.startsWith("retry: 3000\n\n")).toBe(true);
     expect(text).toContain('event: state\ndata: {"state":"running"');
+    expect(text.indexOf("event: state")).toBeLessThan(text.indexOf("event: schema"));
     ac.abort();
     expect((await reader.read()).done).toBe(true);
   });

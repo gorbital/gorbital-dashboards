@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { mockFetch, resetMock } from "./index";
 import { planChange, resetMockDb } from "./schema";
-import type { Problem } from "../types";
+import type { Problem, SchemaStatus } from "../types";
+import { mockSchemaRestarted, schemaStatus, startSchemaDemo } from "./schema";
+import { mockSqlFetch } from "./sql";
 import type { DbEnum, DbTable, DdlResponse, ForeignKey, Migration, TableDetail } from "../schema";
 
 const get = <T>(path: string) => mockFetch(path).then(async (r) => ({ status: r.status, body: (await r.json()) as T }));
@@ -125,5 +127,116 @@ describe("mock database", () => {
     const list = (await get<{ migrations: Migration[] }>("/_portal/api/db/migrations")).body.migrations;
     expect(list.at(-1)).toMatchObject({ name: "add_phone", applied: false, has_down: true });
     expect((await post<Problem>("/_portal/api/generators/migration/plan", { input: { name: "" } })).status).toBe(422);
+  });
+});
+
+/** Reads `/_portal/api/events` and collects every `schema` event after the initial one until `stop`. */
+function watchSchemaEvents() {
+  const ac = new AbortController();
+  const seen: SchemaStatus[] = [];
+  let initial = true;
+  const done = (async () => {
+    const res = await mockFetch("/_portal/api/events", { signal: ac.signal });
+    const reader = res.body!.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value);
+      let i: number;
+      while ((i = buf.indexOf("\n\n")) >= 0) {
+        const block = buf.slice(0, i);
+        buf = buf.slice(i + 2);
+        const m = /^event: schema\ndata: (.*)$/m.exec(block);
+        if (!m) continue;
+        if (initial) initial = false;
+        else seen.push((JSON.parse(m[1]) as { schema: SchemaStatus }).schema);
+      }
+    }
+  })();
+  return { seen, stop: async () => (ac.abort(), done) };
+}
+
+describe("live schema status", () => {
+  it("answers db/schema-status with the contract's shape, healthy by default", async () => {
+    const res = await get<SchemaStatus>("/_portal/api/db/schema-status");
+    expect(res.status).toBe(200);
+    expect(Object.keys(res.body).sort()).toEqual(["applied", "checked_at", "database", "edited", "needs_restart", "pending", "problem", "source"]);
+    expect(res.body).toMatchObject({ database: true, source: "startup", applied: [], edited: [], needs_restart: false, problem: "" });
+    // The seed has one pending file, but this orb dev applies it by itself: no restart needed, no banner.
+    expect(res.body.pending).toEqual([{ file: "20260916000001_projects_search_tsvector.sql", version: "20260916000001", reason: "new" }]);
+  });
+
+  it("sends the latest status to a new subscriber right after the initial state", async () => {
+    const ac = new AbortController();
+    const res = await mockFetch("/_portal/api/events", { signal: ac.signal });
+    const reader = res.body!.getReader();
+    const dec = new TextDecoder();
+    let text = "";
+    while (!text.includes("event: schema")) text += dec.decode((await reader.read()).value);
+    expect(text.indexOf("event: state")).toBeLessThan(text.indexOf("event: schema"));
+    expect(text).toContain('event: schema\ndata: {"type":"schema","time":"');
+    ac.abort();
+  });
+
+  it("publishes a portal status with the applied file after a DDL apply, and a migrate one after app/migrate", { timeout: 15_000 }, async () => {
+    const watch = watchSchemaEvents();
+    await wait(20);
+    const applied = await post<DdlResponse>("/_portal/api/db/ddl/apply", { change: { kind: "create_enum", schema: "public", name: "order_status", values: ["new", "paid"] }, allow_dirty: true, name: "orders" });
+    expect(applied.status).toBe(200);
+    await wait(1700);
+    expect(watch.seen.at(-1)).toMatchObject({ source: "portal", needs_restart: false, pending: [] });
+    expect(watch.seen.at(-1)!.applied).toEqual(expect.arrayContaining(["20260916000001_projects_search_tsvector.sql", expect.stringMatching(/_orders\.sql$/)]));
+
+    expect((await post("/_portal/api/app/migrate-down")).status).toBe(202);
+    await wait(1700);
+    expect(watch.seen.at(-1)).toMatchObject({ source: "migrate", applied: [] });
+    expect(watch.seen.at(-1)!.pending).toHaveLength(1);
+    expect((await post("/_portal/api/app/migrate")).status).toBe(202);
+    await wait(1700);
+    expect(watch.seen.at(-1)).toMatchObject({ source: "migrate" });
+    expect(watch.seen.at(-1)!.applied).toEqual([expect.stringMatching(/_orders\.sql$/)]);
+    await watch.stop();
+  });
+
+  it("publishes a sql status after a committed DDL, not after a rolled-back one or a SELECT", async () => {
+    const watch = watchSchemaEvents();
+    await wait(20);
+    const run = (sql: string, mode?: string) => mockSqlFetch("/_portal/api/db/sql/run", "POST", { method: "POST", headers: { "X-Orb-Portal": "1" }, body: JSON.stringify({ sql, mode }) })!;
+    await run("SELECT 1", "commit");
+    await run("CREATE TABLE t (id int)");
+    await wait(20);
+    expect(watch.seen).toEqual([]);
+    await run("CREATE TABLE t (id int)", "commit");
+    await wait(20);
+    expect(watch.seen.map((s) => s.source)).toEqual(["sql"]);
+    await watch.stop();
+  });
+
+  it("the demo: a file this orb won't apply until a restart, then the restart applies it", { timeout: 10_000 }, async () => {
+    const watch = watchSchemaEvents();
+    await wait(20);
+    startSchemaDemo("pending");
+    await wait(20);
+    expect(watch.seen.at(-1)).toMatchObject({ source: "code", needs_restart: true });
+    expect(watch.seen.at(-1)!.pending.map((p) => p.file)).toContain("20260917000020_invoices_paid_at.sql");
+    const list = (await get<{ migrations: Migration[] }>("/_portal/api/db/migrations")).body.migrations;
+    expect(list.at(-1)).toMatchObject({ version: 20260917000020, applied: false });
+    mockSchemaRestarted();
+    await wait(20);
+    expect(watch.seen.at(-1)).toMatchObject({ source: "migrate", needs_restart: false, applied: ["20260917000020_invoices_paid_at.sql"] });
+
+    startSchemaDemo("out_of_order");
+    expect(schemaStatus().pending.map((p) => p.reason)).toContain("out_of_order");
+    startSchemaDemo("edited");
+    expect(schemaStatus().edited).toEqual([{ file: "20260917000020_invoices_paid_at.sql", version: "20260917000020" }]);
+    startSchemaDemo("problem");
+    expect(schemaStatus().problem).toMatch(/SQLSTATE/);
+    // A redo replays the edited file and clears the mark; the next successful migrate clears the problem.
+    expect((await post("/_portal/api/app/migrate-redo")).status).toBe(202);
+    await wait(2200);
+    expect(watch.seen.at(-1)).toMatchObject({ source: "migrate", edited: [], problem: "" });
+    await watch.stop();
   });
 });

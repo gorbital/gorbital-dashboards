@@ -16,6 +16,7 @@ import { theme } from "@gorbital/dash/theme";
 import { useCapabilities, useDevMigrations, useMigrate, useSystem } from "@/lib/api/queries";
 import type { SystemCheck } from "@/lib/api/types";
 import { when } from "@/lib/time";
+import { SchemaNotice } from "@/components/database/schema-notice";
 import { Gate } from "@/components/shared/gate";
 import { ProblemPanel } from "@/components/shared/problem-panel";
 
@@ -44,6 +45,7 @@ export function Database() {
       </PageHeader>
       <Page>
         <Gate need="database" loading={<SkeletonLines lines={6} className="p-4" />}>
+          <SchemaNotice />
           <TileGrid>
             <Tile
               label="Migrations"

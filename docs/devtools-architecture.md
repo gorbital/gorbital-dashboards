@@ -137,6 +137,40 @@ serves `out/` at `http://127.0.0.1:3100` and resolves `/routes` to
 `useStatus` still polls every 5 s so a page that loads before the stream
 opens, or a stream that quietly dies, never shows stale state for long.
 
+### The schema status (`lib/api/schema-status.ts`)
+
+`orb dev` publishes a `schema` event whenever the database's schema may have
+changed: a migration file saved (`source: "code"`), a migrate run after a
+code change or a restart (`"migrate"`) or from a portal plan (`"portal"`), a
+DDL statement from the SQL Editor (`"sql"`), and once at `"startup"`. The
+same object answers `GET /_portal/api/db/schema-status` (gorbital ADR-0080).
+
+- `useSchemaStatus()` fetches it once (`["db", "schema-status"]`, never
+  stale); after that only events change it. An `orb` without the endpoint
+  answers 404, read as `null`: healthy, no banner, no console error.
+- `applySchemaEvent` (called by the provider for every `schema` event) sets
+  the status and invalidates every other `["db", …]` query, the app's
+  migrations and `/ops/system`, so Tables, SQL, Schema, Objects and
+  Migrations refetch without a reload. A `state` event going from
+  `building` or `preparing` to `running` does the same, since a rebuild may
+  have migrated.
+- `schemaToast` says "Schema updated: applied …" after a migrate that
+  applied files, and "Schema changed by your SQL" after a DDL; nothing for
+  `startup`, `code` or a repeat.
+- `SchemaNotice` (`components/database/schema-notice.tsx`) sits at the top
+  of every Database screen and the Overview. Worst first: the last migrate
+  error (danger, with a link to the output), files in code that `orb dev`
+  won't apply by itself (`needs_restart`, with **Restart**, and a rename
+  hint for `out_of_order` files), applied files edited since (**Redo** when
+  the edited file is the last applied one, otherwise a pointer to a new
+  migration). Dismissing hides it for that `checked_at`; the next status
+  brings it back.
+
+**Mock.** The catalog mock publishes a `schema` event for its own changes.
+`localStorage.devtoolsSchemaDemo` set to `1` (or `pending`),
+`out_of_order`, `edited` or `problem` plays that warning a few seconds after
+load; unset, the public demo stays quiet.
+
 ### The console's streams, through the proxy
 
 The Requests and Logs pages follow `/_portal/app/_dev/requests/stream` and

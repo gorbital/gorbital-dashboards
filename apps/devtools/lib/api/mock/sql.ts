@@ -8,6 +8,7 @@
  */
 import type { CatalogColumn, CatalogTable, Cell, ExplainResponse, HistoryEntry, MigrationRequest, MigrationResponse, PlanNode, RunMode, RunRequest, RunResult, Snippet, SnippetRequest, StatementResult, Template, Warning } from "../sql";
 import type { Problem } from "../types";
+import { emitSchemaStatus } from "./schema";
 
 /* ---------- Sample data ---------- */
 
@@ -305,6 +306,8 @@ function run(req: RunRequest): RunResult | Problem {
     if (mode === "commit") out.committed = true;
     else out.rolled_back = true;
   }
+  // A committed DDL: orb dev notices the schema changed and says so on the events stream.
+  if (out.committed && out.statements.some((st) => /^(CREATE|ALTER|DROP)\b/i.test(st.command))) emitSchemaStatus("sql");
   const last = out.statements.at(-1);
   history = [{ time: new Date().toISOString(), sql: req.sql, mode, duration_ms: out.duration_ms, rows: last?.rows?.length ?? 0, error: out.error?.message }, ...history].slice(0, 500);
   return out;

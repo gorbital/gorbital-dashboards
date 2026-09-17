@@ -16,6 +16,7 @@ import { useAppAction, useCapabilities, useDevApp, useDevMigrations, useReadines
 import { describeError } from "@/lib/api/errors";
 import type { AppState, LinkKey, Status } from "@/lib/api/types";
 import { useNow } from "@/lib/use-now";
+import { SchemaNotice } from "@/components/database/schema-notice";
 import { ConnectionProblem } from "./connection";
 import { OutputConsole } from "./output-console";
 
@@ -65,6 +66,7 @@ export function Overview() {
           <ConnectionProblem error={status.error} retrying={status.isFetching} onRetry={() => void status.refetch()} />
         ) : (
           <>
+            <SchemaNotice />
             <TileGrid>
               <Tile
                 label="App"

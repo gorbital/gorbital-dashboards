@@ -7,7 +7,7 @@
  * generator and `/_portal/app/_dev/migrations`; anything else returns
  * undefined so `mockFetch` carries on.
  */
-import type { Accepted, AppStatus, DevMigrations, GeneratorResponse, Problem } from "../types";
+import type { Accepted, AppStatus, DevMigrations, GeneratorResponse, Problem, SchemaEdited, SchemaSource, SchemaStatus } from "../types";
 import type { Change, DbColumn, DbEnum, DbExtension, DbFunction, DbIndex, DbSchema, DbTable, DbTrigger, DbView, DdlPlan, DdlResponse, ForeignKey, Migration, TableDetail } from "../schema";
 
 const MUTATION_HEADER = "X-Orb-Portal";
@@ -294,10 +294,99 @@ const initialMigrations = (): Migration[] => seedMigrations.map((m, i) => ({ ...
 let migrations: Migration[] = initialMigrations();
 let nextVersionCounter = 0;
 
+/* ---------- Live schema status ---------- */
+
+/** Pending files this orb dev will not apply by itself (the demo's: reload off), by version. */
+let restartOnly = new Set<number>();
+/** Applied files edited since, as the demo sets them up. */
+let edited: SchemaEdited[] = [];
+/** The last migrate error, until the next success. */
+let migrateProblem = "";
+let schemaListener: ((s: SchemaStatus) => void) | undefined;
+
+const fileOf = (m: Migration) => m.path.slice(m.path.lastIndexOf("/") + 1);
+
+/** The status as `GET db/schema-status` and the `schema` event carry it. */
+export function schemaStatus(source: SchemaSource = "startup", applied: string[] = []): SchemaStatus {
+  const highest = Math.max(0, ...migrations.filter((m) => m.applied).map((m) => m.version));
+  const pending = migrations.filter((m) => !m.applied && m.path).map((m) => ({ file: fileOf(m), version: String(m.version), reason: m.version < highest ? ("out_of_order" as const) : ("new" as const) }));
+  return {
+    database: true,
+    source,
+    checked_at: new Date().toISOString(),
+    applied,
+    pending,
+    edited: edited.map((e) => ({ ...e })),
+    needs_restart: pending.some((p) => restartOnly.has(Number(p.version))),
+    problem: migrateProblem,
+  };
+}
+
+/** The mock hub registers itself here and turns every status into a `schema` event. */
+export function setSchemaListener(fn: ((s: SchemaStatus) => void) | undefined) {
+  schemaListener = fn;
+}
+
+/** Publishes a status; the SQL mock calls it after a committed DDL, the migrate commands after they ran. */
+export function emitSchemaStatus(source: SchemaSource, applied: string[] = []) {
+  schemaListener?.(schemaStatus(source, applied));
+}
+
+export type SchemaDemo = "pending" | "out_of_order" | "edited" | "problem";
+
+/**
+ * Sets up the state the banner warns about, then publishes it as a `code`
+ * status the way orb dev does when a file changes and it doesn't apply it.
+ * `pending` adds a new file this orb will only apply on restart;
+ * `out_of_order` adds one with a version below the last applied; `edited`
+ * marks the last applied file as changed since; `problem` records a failed
+ * migrate.
+ */
+export function startSchemaDemo(kind: SchemaDemo) {
+  const last = [...migrations].reverse().find((m) => m.applied);
+  switch (kind) {
+    case "pending":
+    case "out_of_order": {
+      const version = kind === "pending" ? 20260917000020 : (last?.version ?? 20260901000001) - 1;
+      const name = kind === "pending" ? "invoices_paid_at" : "invoices_backfill";
+      if (!migrations.some((m) => m.version === version)) {
+        migrations.push({ version, name, path: `db/migrations/${version}_${name}.sql`, sql: `-- ${name.replace(/_/g, " ")}.\n\n-- +goose Up\nALTER TABLE billing.subscriptions ADD COLUMN paid_at timestamptz;\n\n-- +goose Down\nALTER TABLE billing.subscriptions DROP COLUMN paid_at;\n`, applied: false, applied_at: null, has_down: true });
+        restartOnly.add(version);
+      }
+      break;
+    }
+    case "edited":
+      if (last && !edited.some((e) => e.version === String(last.version))) edited.push({ file: fileOf(last), version: String(last.version) });
+      break;
+    case "problem":
+      migrateProblem = 'migrate: 20260916000001_projects_search_tsvector.sql: ERROR: column "search" of relation "projects" already exists (SQLSTATE 42701)';
+      break;
+  }
+  emitSchemaStatus("code");
+}
+
+/** The app restarted: orb dev applied the files it had left to a restart, and says so. */
+export function mockSchemaRestarted() {
+  const applied: string[] = [];
+  for (const m of migrations) {
+    if (m.applied || !restartOnly.has(m.version)) continue;
+    m.applied = true;
+    m.applied_at = new Date().toISOString();
+    applied.push(fileOf(m));
+  }
+  restartOnly.clear();
+  if (applied.length === 0) return;
+  migrateProblem = "";
+  emitSchemaStatus("migrate", applied);
+}
+
 /** Resets the mock database to its first state; tests call it between cases. */
 export function resetMockDb() {
   migrations = initialMigrations();
   nextVersionCounter = 0;
+  restartOnly = new Set();
+  edited = [];
+  migrateProblem = "";
   enums = enums.filter((e) => e.id < 20000);
   functions = functions.filter((f) => f.id < 20000);
   views = views.filter((v) => v.id < 20000);
@@ -600,14 +689,18 @@ function effectOf(ch: Change): () => void {
 let busy = false;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function runMigrate(mode: "up" | "down" | "redo") {
+async function runMigrate(mode: "up" | "down" | "redo", source: SchemaSource = "migrate") {
   busy = true;
   await wait(1500);
+  const applied: string[] = [];
   const apply = (m: Migration) => {
     m.applied = true;
     m.applied_at = new Date().toISOString();
     pendingEffects.get(m.version)?.();
     pendingEffects.delete(m.version);
+    restartOnly.delete(m.version);
+    edited = edited.filter((e) => e.version !== String(m.version));
+    if (m.path) applied.push(fileOf(m));
   };
   const unapply = (m: Migration) => {
     m.applied = false;
@@ -625,6 +718,8 @@ async function runMigrate(mode: "up" | "down" | "redo") {
     }
   }
   busy = false;
+  migrateProblem = "";
+  emitSchemaStatus(source, applied);
 }
 
 /* ---------- Responses ---------- */
@@ -689,7 +784,7 @@ export async function mockDb(url: URL, method: string, init: RequestInit, app: A
   const migrate = /^\/_portal\/api\/app\/(migrate|migrate-down|migrate-redo)$/.exec(p);
   if (migrate && method === "POST") {
     if (busy) return problem(409, "app_action_failed", "orb dev is still handling the previous request; try again in a moment");
-    void runMigrate(migrate[1] === "migrate" ? "up" : migrate[1] === "migrate-down" ? "down" : "redo");
+    void runMigrate(migrate[1] === "migrate" ? "up" : migrate[1] === "migrate-down" ? "down" : "redo", "migrate");
     return json({ accepted: true, app } satisfies Accepted, 202);
   }
 
@@ -711,6 +806,8 @@ export async function mockDb(url: URL, method: string, init: RequestInit, app: A
   if (method === "GET") {
     const wanted = schemasParam(url);
     switch (rest) {
+      case "schema-status":
+        return json(schemaStatus());
       case "schemas":
         return json({ schemas });
       case "tables":
@@ -755,7 +852,7 @@ export async function mockDb(url: URL, method: string, init: RequestInit, app: A
     if (busy) return problem(409, "app_action_failed", "orb dev is still handling the previous request; try again in a moment");
     migrations.push({ version, name, path: file.path, sql: file.content, applied: false, applied_at: null, has_down: plan.down.length > 0 });
     pendingEffects.set(version, effectOf(body.change));
-    void runMigrate("up");
+    void runMigrate("up", "portal");
     return json({ plan, file, applied: true } satisfies DdlResponse);
   }
   return undefined; // the SQL editor's and the Table Editor's writes (mock/sql.ts, mock/db.ts) come next

@@ -8,6 +8,7 @@ import { Pill } from "@gorbital/dash/components/pill";
 import { TabPanel, Tabs, type Tab } from "@gorbital/dash/components/tabs";
 import { useStatus } from "@/lib/api/queries";
 import { useEnums, useExtensions, useFunctions, useSchemas, useViews } from "@/lib/api/schema";
+import { SchemaNotice } from "@/components/database/schema-notice";
 import { DbGate, DbPageSkeleton, useMounted } from "./common";
 import { EnumsTab } from "./enums-tab";
 import { ExtensionsTab } from "./extensions-tab";
@@ -63,6 +64,7 @@ export function ObjectsPage() {
       </PageHeader>
       <Page>
         <DbGate status={status}>
+          <SchemaNotice />
           <Tabs<ObjectsTab> tabs={tabs} value={tab} onChange={(t) => navigate({ tab: t })}>
             <TabPanel value="functions">{tab === "functions" && <FunctionsTab schema={schema} />}</TabPanel>
             <TabPanel value="triggers">{tab === "triggers" && <TriggersTab schema={schema} />}</TabPanel>

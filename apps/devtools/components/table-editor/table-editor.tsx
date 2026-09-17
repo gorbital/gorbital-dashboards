@@ -11,6 +11,7 @@ import { Dropdown } from "@gorbital/dash/components/dropdown";
 import { Empty } from "@gorbital/dash/components/panel";
 import { Skeleton } from "@gorbital/dash/components/spinner";
 import { Tooltip } from "@gorbital/dash/components/tooltip";
+import { SchemaNotice } from "@/components/database/schema-notice";
 import { ConnectionProblem } from "@/components/overview/connection";
 import { ApiError, NotConnectedError } from "@/lib/api/client";
 import { dbKeys, useDeleteRows, useRows, useTableDetail, useUpdateRow, type Cell, type Column, type RowKey, type RowPage, type RowQuery } from "@/lib/api/db";
@@ -167,6 +168,7 @@ export function TableEditor() {
         onNewTable={() => setTableSheet(true)}
       />
       <section className="flex min-w-0 flex-1 flex-col">
+        <SchemaNotice variant="flush" />
         {!tableKey ? (
           <div className="flex flex-1 items-center justify-center p-8">
             <Empty title="Pick a table" hint="Its rows open in a grid you can filter, sort and edit; the definition view shows how it is built." />

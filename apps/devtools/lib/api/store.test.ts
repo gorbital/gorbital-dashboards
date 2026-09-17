@@ -39,4 +39,12 @@ describe("consoleStore", () => {
     expect(consoleStore.getSnapshot().lines).toEqual([]);
     expect(consoleStore.getSnapshot().app?.state).toBe("running");
   });
+
+  it("leaves schema events to the query cache: no line, nothing else touched", () => {
+    consoleStore.push({ type: "output", time: "t", output: line(1, "hi") });
+    const before = consoleStore.getSnapshot();
+    consoleStore.push({ type: "schema", time: "t", schema: { database: true, source: "sql", checked_at: "c", applied: [], pending: [], edited: [], needs_restart: false, problem: "" } });
+    expect(consoleStore.getSnapshot()).toBe(before);
+    expect(consoleStore.getSnapshot().lines.map((l) => l.text)).toEqual(["hi"]);
+  });
 });

@@ -106,10 +106,51 @@ export type AppAction = "restart" | "stop" | "start";
 export type StreamEnd = { reason: "max_duration" | "shutdown" };
 export type StreamDropped = { count: number };
 
+/* ---------- Live schema status (orb dev's db/schema-status) ---------- */
+
+/**
+ * What produced a schema status: `code` = a file under db/migrations changed
+ * and orb dev did not apply it (reload off, or the app stopped or failed);
+ * `migrate` = orb dev ran migrations after a code change or a restart;
+ * `portal` = a plan applied from the portal ran migrations; `sql` = the SQL
+ * Editor ran a DDL statement; `startup` = computed when orb dev started.
+ */
+export type SchemaSource = "code" | "migrate" | "portal" | "sql" | "startup";
+
+export type SchemaPending = {
+  /** The file's name under db/migrations. */
+  file: string;
+  version: string;
+  /** `out_of_order`: the version is lower than the highest applied one; goose will not apply it in order. */
+  reason: "new" | "out_of_order";
+};
+
+/** An applied file whose content changed since; PostgreSQL still has the old version. */
+export type SchemaEdited = { file: string; version: string };
+
+/**
+ * `GET /_portal/api/db/schema-status` and the `schema` event carry the same
+ * object; new subscribers get the latest right after the initial `state`.
+ */
+export type SchemaStatus = {
+  database: boolean;
+  source: SchemaSource;
+  checked_at: string;
+  /** With `migrate` and `portal`: the files that became applied. */
+  applied: string[];
+  pending: SchemaPending[];
+  edited: SchemaEdited[];
+  /** Pending files exist and orb dev will not apply them by itself. */
+  needs_restart: boolean;
+  /** The last migrate error, or "". */
+  problem: string;
+};
+
 /** What `/_portal/api/events` streams, after the client normalises the first bare `state` event and `dropped`. */
 export type PortalEvent =
   | { type: "state"; time: string; state: AppStatus }
   | { type: "output"; time: string; output: OutputLine }
+  | { type: "schema"; time: string; schema: SchemaStatus }
   | { type: "dropped"; time: string; count: number };
 
 /* ---------- Generators ---------- */

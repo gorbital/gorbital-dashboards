@@ -367,7 +367,7 @@ export function TableEditor() {
 export function TableEditorSkeleton() {
   return (
     <div className="flex h-full min-h-0">
-      <div className="w-[272px] shrink-0 border-r border-hairline p-3">
+      <div className="w-[312px] shrink-0 border-r border-hairline p-3">
         <Skeleton className="mb-3 h-8 w-full" />
         <Skeleton className="mb-4 h-8 w-full" />
         {Array.from({ length: 6 }, (_, i) => (

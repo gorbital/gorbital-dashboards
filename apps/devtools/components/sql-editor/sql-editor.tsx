@@ -16,6 +16,7 @@ import { useCheckSql, useClearHistory, useDeleteSnippet, useExplainSql, useRunSq
 import { loadDraft, saveDraft } from "@/lib/sql-editor/draft";
 import { buildRunRequest, gateRun, scriptControlsTransaction, type RunSettings } from "@/lib/sql-editor/run";
 import { suggestSnippetName } from "@/lib/sql-editor/snippets";
+import { SchemaNotice } from "@/components/database/schema-notice";
 import { ConnectionProblem } from "@/components/overview/connection";
 import { MigrationDialog, SaveSnippetDialog, WarningsConfirm } from "./dialogs";
 import { ExplainView } from "./explain-view";
@@ -371,94 +372,97 @@ export function SqlEditor() {
         ) : hasDatabase === false ? (
           <Empty title="No database" hint="This app uses the Minimal preset; the SQL Editor needs PostgreSQL (the Full preset)." />
         ) : (
-          <div className="grid min-h-0 flex-1 grid-cols-[236px_minmax(0,1fr)] gap-3">
-            <aside className="panel min-h-0 overflow-hidden px-2 py-1">
-              <SnippetTree
-                snippets={snippets.data?.snippets}
-                snippetsLoading={snippets.isPending}
-                snippetsError={snippets.error ? snippets.error.message : undefined}
-                templates={templates.data?.templates}
-                history={history.data?.history}
-                historyMax={history.data?.max}
-                selected={source}
-                onOpenSnippet={openSnippet}
-                onOpenTemplate={openTemplate}
-                onOpenHistory={openHistory}
-                onToggleFavorite={toggleFavorite}
-                onRename={setRenameTarget}
-                onDelete={setDeleteTarget}
-                onClearHistory={() => setClearOpen(true)}
-                onNew={newQuery}
-              />
-            </aside>
-            <div className="flex min-h-0 flex-col gap-3">
-              <section className="panel flex min-h-[220px] flex-[3] flex-col overflow-hidden">
-                <div className="flex items-center gap-2 border-b border-hairline px-3 py-1.5">
-                  <Database size={12} className="text-dim" />
-                  <span className="font-mono text-[11.5px] text-text">{source.kind === "snippet" ? `${source.name}.sql` : title}</span>
-                  {dirty && (
-                    <span className="flex items-center gap-1 font-mono text-[10.5px] text-warn" title="Unsaved changes">
-                      <Circle size={7} fill="currentColor" /> unsaved
-                    </span>
-                  )}
-                  {currentSnippet && <span className="ml-1 truncate font-mono text-[10.5px] text-faint">{currentSnippet.path}</span>}
-                  <span className="ml-auto font-mono text-[10.5px] text-faint tnum">
-                    {buffer.split("\n").length} lines{selection ? ` · ${selection.length} selected` : ""}
-                  </span>
-                </div>
-                <Toolbar
-                  settings={settings}
-                  onSettings={setSettings}
-                  hasSelection={selection.trim().length > 0}
-                  canRun={canRun}
-                  running={run.isPending || check.isPending}
-                  explaining={explain.isPending}
-                  onRun={(sel) => void doRun(sel)}
-                  onExplain={doExplain}
-                  onFormat={() => void doFormat()}
-                  onSave={() => setSaveOpen(true)}
-                  onMigration={openMigration}
-                  mod={mod}
+          <>
+            <SchemaNotice className="mb-3" />
+            <div className="grid min-h-0 flex-1 grid-cols-[236px_minmax(0,1fr)] gap-3">
+              <aside className="panel min-h-0 overflow-hidden px-2 py-1">
+                <SnippetTree
+                  snippets={snippets.data?.snippets}
+                  snippetsLoading={snippets.isPending}
+                  snippetsError={snippets.error ? snippets.error.message : undefined}
+                  templates={templates.data?.templates}
+                  history={history.data?.history}
+                  historyMax={history.data?.max}
+                  selected={source}
+                  onOpenSnippet={openSnippet}
+                  onOpenTemplate={openTemplate}
+                  onOpenHistory={openHistory}
+                  onToggleFavorite={toggleFavorite}
+                  onRename={setRenameTarget}
+                  onDelete={setDeleteTarget}
+                  onClearHistory={() => setClearOpen(true)}
+                  onNew={newQuery}
                 />
-                <div className="min-h-0 flex-1">
-                  <MonacoEditor
-                    value={buffer}
-                    onChange={setBuffer}
-                    language="pgsql"
-                    placeholder="SELECT * FROM … ;  — ⌘⏎ runs, ^Space completes tables and columns"
-                    catalog={catalog}
-                    markers={markers}
-                    onRun={() => void doRun(true)}
-                    onSave={() => canRun && setSaveOpen(true)}
-                    onFormat={() => void doFormat()}
-                    onSelectionChange={setSelection}
-                    onReady={(h) => {
-                      editor.current = h;
-                    }}
-                  />
-                </div>
-              </section>
-              <section className="panel flex min-h-[200px] flex-[2] flex-col overflow-hidden">
-                <Tabs
-                  className="flex min-h-0 flex-1 flex-col [&>div:first-child]:px-3"
-                  value={bottom}
-                  onChange={setBottom}
-                  tabs={[
-                    { value: "results", label: "Results", badge: result ? result.statements.length : undefined },
-                    { value: "explain", label: "Explain", badge: plan ? (plan.analyzed ? "analyze" : undefined) : undefined },
-                  ]}
-                >
-                  <div className="min-h-0 flex-1">
-                    {bottom === "results" ? (
-                      <Results result={result} requestError={requestError} running={run.isPending} lineOffset={lastRun?.lineOffset ?? 0} onJumpToLine={jumpToLine} />
-                    ) : (
-                      <ExplainView plan={plan?.plan} analyzed={plan?.analyzed} explaining={explain.isPending} />
+              </aside>
+              <div className="flex min-h-0 flex-col gap-3">
+                <section className="panel flex min-h-[220px] flex-[3] flex-col overflow-hidden">
+                  <div className="flex items-center gap-2 border-b border-hairline px-3 py-1.5">
+                    <Database size={12} className="text-dim" />
+                    <span className="font-mono text-[11.5px] text-text">{source.kind === "snippet" ? `${source.name}.sql` : title}</span>
+                    {dirty && (
+                      <span className="flex items-center gap-1 font-mono text-[10.5px] text-warn" title="Unsaved changes">
+                        <Circle size={7} fill="currentColor" /> unsaved
+                      </span>
                     )}
+                    {currentSnippet && <span className="ml-1 truncate font-mono text-[10.5px] text-faint">{currentSnippet.path}</span>}
+                    <span className="ml-auto font-mono text-[10.5px] text-faint tnum">
+                      {buffer.split("\n").length} lines{selection ? ` · ${selection.length} selected` : ""}
+                    </span>
                   </div>
-                </Tabs>
-              </section>
+                  <Toolbar
+                    settings={settings}
+                    onSettings={setSettings}
+                    hasSelection={selection.trim().length > 0}
+                    canRun={canRun}
+                    running={run.isPending || check.isPending}
+                    explaining={explain.isPending}
+                    onRun={(sel) => void doRun(sel)}
+                    onExplain={doExplain}
+                    onFormat={() => void doFormat()}
+                    onSave={() => setSaveOpen(true)}
+                    onMigration={openMigration}
+                    mod={mod}
+                  />
+                  <div className="min-h-0 flex-1">
+                    <MonacoEditor
+                      value={buffer}
+                      onChange={setBuffer}
+                      language="pgsql"
+                      placeholder="SELECT * FROM … ;  — ⌘⏎ runs, ^Space completes tables and columns"
+                      catalog={catalog}
+                      markers={markers}
+                      onRun={() => void doRun(true)}
+                      onSave={() => canRun && setSaveOpen(true)}
+                      onFormat={() => void doFormat()}
+                      onSelectionChange={setSelection}
+                      onReady={(h) => {
+                        editor.current = h;
+                      }}
+                    />
+                  </div>
+                </section>
+                <section className="panel flex min-h-[200px] flex-[2] flex-col overflow-hidden">
+                  <Tabs
+                    className="flex min-h-0 flex-1 flex-col [&>div:first-child]:px-3"
+                    value={bottom}
+                    onChange={setBottom}
+                    tabs={[
+                      { value: "results", label: "Results", badge: result ? result.statements.length : undefined },
+                      { value: "explain", label: "Explain", badge: plan ? (plan.analyzed ? "analyze" : undefined) : undefined },
+                    ]}
+                  >
+                    <div className="min-h-0 flex-1">
+                      {bottom === "results" ? (
+                        <Results result={result} requestError={requestError} running={run.isPending} lineOffset={lastRun?.lineOffset ?? 0} onJumpToLine={jumpToLine} />
+                      ) : (
+                        <ExplainView plan={plan?.plan} analyzed={plan?.analyzed} explaining={explain.isPending} />
+                      )}
+                    </div>
+                  </Tabs>
+                </section>
+              </div>
             </div>
-          </div>
+          </>
         )}
       </div>
 

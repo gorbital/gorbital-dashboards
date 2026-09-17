@@ -33,6 +33,7 @@ import { Pill } from "@gorbital/dash/components/pill";
 import { Skeleton, SkeletonLines } from "@gorbital/dash/components/spinner";
 import { toast } from "@gorbital/dash/components/toast";
 import { theme } from "@gorbital/dash/theme";
+import { SchemaNotice } from "@/components/database/schema-notice";
 import { DbGate, DbPageSkeleton, DbProblem, useMounted, useStoredState } from "@/components/db-objects/common";
 import { useStatus } from "@/lib/api/queries";
 import { describeError, useForeignKeys, useSchemas, useTableDetails, useTables, type DbTable, type Ownership, type TableDetail } from "@/lib/api/schema";
@@ -126,6 +127,7 @@ function SchemaInner() {
       </PageHeader>
       <Page>
         <DbGate status={status}>
+          <SchemaNotice />
           {error && !tables.data ? (
             <DbProblem error={error} retrying={tables.isFetching} onRetry={() => void Promise.all([tables.refetch(), fks.refetch()])} />
           ) : !graph ? (

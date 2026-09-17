@@ -80,6 +80,13 @@ describe("parseEvent", () => {
     expect(parseEvent("dropped", '{"count":3}')).toMatchObject({ type: "dropped", count: 3 });
   });
 
+  it("reads a schema event and fills the lists an older orb leaves out", () => {
+    const e = parseEvent("schema", '{"type":"schema","time":"t","schema":{"database":true,"source":"migrate","checked_at":"c","applied":["20260917000010_invoices.sql"],"pending":null,"edited":null,"needs_restart":false,"problem":""}}');
+    expect(e).toEqual({ type: "schema", time: "t", schema: { database: true, source: "migrate", checked_at: "c", applied: ["20260917000010_invoices.sql"], pending: [], edited: [], needs_restart: false, problem: "" } });
+    expect(parseEvent("schema", '{"type":"schema","time":"t"}')).toBeNull();
+    expect(parseEvent("schema", '{"type":"state","time":"t","schema":{}}')).toBeNull();
+  });
+
   it("gives null for garbage and unknown events", () => {
     expect(parseEvent("state", "not json")).toBeNull();
     expect(parseEvent("whatever", "{}")).toBeNull();

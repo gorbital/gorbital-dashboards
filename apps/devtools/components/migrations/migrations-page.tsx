@@ -12,9 +12,11 @@ import { Empty, Panel } from "@gorbital/dash/components/panel";
 import { SkeletonLines } from "@gorbital/dash/components/spinner";
 import { Tile, TileGrid } from "@gorbital/dash/components/tile";
 import { fmtAgo } from "@gorbital/dash/lib/format";
+import { SchemaNotice } from "@/components/database/schema-notice";
 import { DbGate, DbPageSkeleton, DbProblem, useMounted } from "@/components/db-objects/common";
 import { useStatus } from "@/lib/api/queries";
 import { useDevMigrations, useMigrateAction, useMigrations, type Migration } from "@/lib/api/schema";
+import { namesFile, useSchemaStatus } from "@/lib/api/schema-status";
 import { useNow } from "@/lib/use-now";
 import { badgesFor, formatVersion, newestFirst, splitSections, summarise } from "./migrations";
 import { NewMigrationDialog } from "./new-migration-dialog";
@@ -34,6 +36,9 @@ export function MigrationsPage() {
   const [creating, setCreating] = useState(false);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const now = useNow();
+  const schemaStatus = useSchemaStatus();
+  const edited = schemaStatus.data?.edited ?? [];
+  const outOfOrder = (schemaStatus.data?.pending ?? []).filter((p) => p.reason === "out_of_order");
 
   const list = migrations.data ?? [];
   const summary = summarise(list);
@@ -66,6 +71,7 @@ export function MigrationsPage() {
       </PageHeader>
       <Page>
         <DbGate status={status}>
+          <SchemaNotice />
           {migrations.error && !migrations.data ? (
             <DbProblem error={migrations.error} retrying={migrations.isFetching} onRetry={() => void migrations.refetch()} />
           ) : (
@@ -110,7 +116,7 @@ export function MigrationsPage() {
                 ) : (
                   <ul>
                     {rows.map((m) => (
-                      <Row key={m.version} m={m} open={expanded.has(m.version)} onToggle={() => toggle(m.version)} now={now || Date.now()} isLast={summary.last?.version === m.version} />
+                      <Row key={m.version} m={m} open={expanded.has(m.version)} onToggle={() => toggle(m.version)} now={now || Date.now()} isLast={summary.last?.version === m.version} edited={namesFile(edited, m.path)} outOfOrder={namesFile(outOfOrder, m.path)} />
                     ))}
                   </ul>
                 )}
@@ -156,7 +162,7 @@ export function MigrationsPage() {
 const badgeTone = { pending: "warn", applied: "ok", "no-down": "muted", orphan: "danger" } as const;
 const badgeLabel = { pending: "pending", applied: "applied", "no-down": "no Down", orphan: "no file" } as const;
 
-function Row({ m, open, onToggle, now, isLast }: { m: Migration; open: boolean; onToggle: () => void; now: number; isLast: boolean }) {
+function Row({ m, open, onToggle, now, isLast, edited, outOfOrder }: { m: Migration; open: boolean; onToggle: () => void; now: number; isLast: boolean; edited?: boolean; outOfOrder?: boolean }) {
   const sections = splitSections(m.sql);
   return (
     <li className={`border-t border-hairline first:border-0 ${m.applied ? "" : "bg-warn/5"}`}>
@@ -166,6 +172,20 @@ function Row({ m, open, onToggle, now, isLast }: { m: Migration; open: boolean; 
         <span className="font-mono text-[11px] text-dim tnum">{formatVersion(m.version)}</span>
         <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-text">{m.name || <span className="text-dim">(version only; no file in db/migrations)</span>}</span>
         {isLast && <Badge tone="accent">last applied</Badge>}
+        {edited && (
+          <span title="The file changed after it was applied; PostgreSQL still has the old version">
+            <Badge tone="warn" mono={false} className="gap-1">
+              <AlertTriangle size={10} /> edited after apply
+            </Badge>
+          </span>
+        )}
+        {outOfOrder && (
+          <span title="Its version is lower than the last applied migration; goose applies migrations in order">
+            <Badge tone="warn" mono={false}>
+              out of order
+            </Badge>
+          </span>
+        )}
         {badgesFor(m).map((b) => (
           <Badge key={b} tone={badgeTone[b]}>
             {badgeLabel[b]}

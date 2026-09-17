@@ -67,7 +67,7 @@ import { deliverMockMail, mockMailFetch, mockMailPreviewFetch, resetMockMail } f
 import { mockProjectFetch, mockRestarted, mockServiceAccountsFetch, resetMockProject } from "./project";
 import { mockSqlFetch } from "./sql";
 import { mockStorageFetch, resetMockStorage } from "./storage";
-import { mockDb } from "./schema";
+import { mockDb, mockSchemaRestarted, resetMockDb as resetMockSchema, schemaStatus, setSchemaListener, startSchemaDemo, type SchemaDemo } from "./schema";
 
 const MUTATION_HEADER = "X-Orb-Portal";
 
@@ -99,6 +99,33 @@ function setApp(patch: Partial<AppStatus>) {
   publish({ type: "state", time: now(), state: app });
 }
 
+// Every schema status the catalog mock computes goes out as a `schema` event, like orb dev's.
+setSchemaListener((schema) => publish({ type: "schema", time: now(), schema }));
+
+/**
+ * `localStorage.devtoolsSchemaDemo` sets up the banner a few seconds after
+ * the first subscriber connects: "1" or "pending" (a file in code this orb
+ * dev won't apply until a restart), "out_of_order", "edited" or "problem".
+ * Unset, the mock stays healthy so the public demo shows no warning.
+ */
+let demoStarted = false;
+function scheduleSchemaDemo() {
+  if (demoStarted) return;
+  let kind: string | null = null;
+  try {
+    kind = typeof localStorage === "undefined" ? null : localStorage.getItem("devtoolsSchemaDemo");
+  } catch {
+    // Storage off: no demo.
+  }
+  if (!kind) return;
+  demoStarted = true;
+  const demo: SchemaDemo = kind === "out_of_order" || kind === "edited" || kind === "problem" ? kind : "pending";
+  setTimeout(() => {
+    addLine("orb", demo === "edited" ? "db/migrations: an applied file changed on disk" : demo === "problem" ? "migrate failed; see the schema status" : "db/migrations: new file; reload is off, restart to apply it");
+    startSchemaDemo(demo);
+  }, 4000);
+}
+
 function tick() {
   if (app.state !== "running") return;
   const l = liveOutputLines[liveIndex++ % liveOutputLines.length];
@@ -127,6 +154,7 @@ async function restart() {
   addLine("orb", `starting app (pid ${pid}) on ${app.addr}`);
   await wait(300);
   addLine("app", 'level=INFO msg="listening" addr=127.0.0.1:8080');
+  mockSchemaRestarted(); // the files left to a restart are applied now
   for (const job of pendingJobs) {
     definitions = [...definitions, job.definition];
     sources = [...sources, job.source];
@@ -191,6 +219,8 @@ export function resetMock() {
   nextChangeId = 10;
   lastRunAt.clear();
   testEmails = 0;
+  demoStarted = false;
+  resetMockSchema();
   resetMockAuth();
   resetMockLogs();
   resetObservabilityMock();
@@ -230,9 +260,12 @@ function events(signal?: AbortSignal): Response {
       const write = (event: string, data: unknown) => controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
       controller.enqueue(encoder.encode("retry: 3000\n\n"));
       write("state", app);
+      // New subscribers get the latest schema status right after the initial state, as orb dev sends it.
+      write("schema", { type: "schema", time: now(), schema: schemaStatus() });
       listener = (e) => write(e.type, e);
       subscribers.add(listener);
       ensureTicker();
+      scheduleSchemaDemo();
       signal?.addEventListener(
         "abort",
         () => {

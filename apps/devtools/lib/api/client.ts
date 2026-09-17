@@ -1,6 +1,6 @@
 import { dataMode } from "./mode";
 import { readSSE, type SSEMessage } from "./sse";
-import type { AppStatus, DevStreamEvent, OutputLine, PortalEvent, Problem } from "./types";
+import type { AppStatus, DevStreamEvent, OutputLine, PortalEvent, Problem, SchemaStatus } from "./types";
 
 /** Every request that isn't GET or HEAD must carry it; the portal refuses the rest with 403. */
 export const MUTATION_HEADER = "X-Orb-Portal";
@@ -235,6 +235,23 @@ export function parseEvent(event: string, data: string): PortalEvent | null {
   if (event === "output" && o.type === "output" && o.output && typeof o.output === "object") {
     return { type: "output", time: String(o.time ?? ""), output: o.output as OutputLine };
   }
+  if (event === "schema" && o.type === "schema" && o.schema && typeof o.schema === "object") {
+    return { type: "schema", time: String(o.time ?? ""), schema: normaliseSchemaStatus(o.schema as Partial<SchemaStatus>) };
+  }
   if (event === "dropped" && typeof o.count === "number") return { type: "dropped", time: new Date().toISOString(), count: o.count };
   return null;
+}
+
+/** Fills the lists an older orb may leave out (`null` for an empty slice in Go), so the UI never reads `undefined.length`. */
+export function normaliseSchemaStatus(s: Partial<SchemaStatus>): SchemaStatus {
+  return {
+    database: s.database !== false,
+    source: s.source ?? "startup",
+    checked_at: s.checked_at ?? "",
+    applied: Array.isArray(s.applied) ? s.applied : [],
+    pending: Array.isArray(s.pending) ? s.pending : [],
+    edited: Array.isArray(s.edited) ? s.edited : [],
+    needs_restart: Boolean(s.needs_restart),
+    problem: s.problem ?? "",
+  };
 }

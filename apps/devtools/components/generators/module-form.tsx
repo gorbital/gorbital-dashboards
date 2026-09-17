@@ -5,7 +5,7 @@ import { Badge } from "@gorbital/dash/components/badge";
 import { Button } from "@gorbital/dash/components/button";
 import { Checkbox, Field, Input } from "@gorbital/dash/components/input";
 import type { Plan } from "@/lib/api/types";
-import { ORG_UNAVAILABLE, isV01LayoutError, moduleNames, type ModuleForm, type ModuleGeneratorResult } from "@/lib/generators/module";
+import { ORG_HINT, isV01LayoutError, moduleNames, type ModuleForm, type ModuleGeneratorResult } from "@/lib/generators/module";
 import type { ResourceErrors } from "@/lib/generators/resource";
 import { FieldsEditor } from "./fields-editor";
 
@@ -21,9 +21,9 @@ type Props = {
   onUseResource: () => void;
 };
 
-/** `orb gen module` as a form: the name, the fields (with `string?`), the plural and ID prefix, and the organisation option that waits for Phase 7. */
+/** `orb gen module` as a form: the name, the fields (with `string?`), the plural and ID prefix, and whether records belong to an organisation (`--org`). */
 export function ModuleFormFields({ form, onChange, errors, touched, locked, serverError, plan, onUseResource }: Props) {
-  const names = moduleNames(form.name || "Module", form.plural, form.idPrefix);
+  const names = moduleNames(form.name || "Module", form.plural, form.idPrefix, form.org);
   const set = <K extends keyof ModuleForm>(key: K, value: ModuleForm[K]) => onChange({ ...form, [key]: value });
   const err = (key: keyof ResourceErrors) => (touched ? (errors[key] as string | undefined) : undefined);
   const v01 = isV01LayoutError(serverError);
@@ -68,13 +68,12 @@ export function ModuleFormFields({ form, onChange, errors, touched, locked, serv
       </div>
 
       <div className="grid gap-1 rounded-lg border border-hairline bg-bg/40 px-3 py-2">
-        <label className="flex items-center gap-2 text-[12px] text-faint">
-          <Checkbox checked={false} disabled aria-label="Scope to organisations" />
+        <label className="flex items-center gap-2 text-[12px] text-muted">
+          <Checkbox checked={form.org} onCheckedChange={(c) => set("org", c === true)} disabled={locked} aria-label="Scope to organisations" />
           Belongs to an organisation
           <span className="font-mono text-[10.5px] text-dim">--org</span>
-          <Badge tone="muted">Phase 7</Badge>
         </label>
-        <div className="text-[11px] text-dim">{ORG_UNAVAILABLE} Records belong to the signed-in user: another user&apos;s requests get 404.</div>
+        <div className="text-[11px] text-dim">{form.org ? ORG_HINT : "Records belong to the signed-in user: another user's requests get 404."}</div>
       </div>
 
       {result ? (

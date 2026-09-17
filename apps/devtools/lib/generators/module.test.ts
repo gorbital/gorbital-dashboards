@@ -9,17 +9,20 @@ const shelf: ModuleForm = {
   fields: [field({ unique: true }), field({ name: "description", type: "text" }), field({ name: "visibility", type: "enum", values: "private, shared" }), field({ name: "nickname", optional: true })],
   plural: "",
   idPrefix: "",
+  org: false,
 };
 
 describe("the module form", () => {
-  it("sends every key the generator takes, org always false", () => {
+  it("sends every key the generator takes", () => {
     expect(toModuleInput(shelf)).toEqual({ name: "Shelf", fields: ["name:string:unique", "description:text", "visibility:enum(private,shared)", "nickname:string?"], plural: "", id_prefix: "", org: false });
+    expect(toModuleInput({ ...shelf, org: true })).toMatchObject({ org: true });
     expect(toModuleInput({ ...shelf, plural: " Shelves ", idPrefix: "shf" })).toMatchObject({ plural: "Shelves", id_prefix: "shf" });
   });
 
   it("quotes string? and enum specs in the command", () => {
     expect(toModuleCommand(shelf)).toBe("orb gen module Shelf name:string:unique description:text 'visibility:enum(private,shared)' 'nickname:string?'");
     expect(toModuleCommand({ ...defaultModuleForm(), plural: "People" })).toBe("orb gen module Name name:string --plural People");
+    expect(toModuleCommand({ ...shelf, fields: [field({})], org: true })).toBe("orb gen module Shelf name:string --org");
   });
 
   it("derives the module, route, table and permissions", () => {
@@ -28,6 +31,7 @@ describe("the module form", () => {
     expect(moduleNames("Chief").pkg).toBe("chiefs");
     expect(moduleNames("Person", "People").pkg).toBe("people");
     expect(moduleNames("Shelf")).toMatchObject({ pkg: "shelves", table: "shelves", path: "/v1/shelves", dir: "internal/modules/shelves", permissions: ["shelves.shelf.read", "shelves.shelf.write"] });
+    expect(moduleNames("ClubBook", "", "", true).path).toBe("/v1/orgs/{orgId}/club-books");
   });
 
   it("wants a required string for the title", () => {

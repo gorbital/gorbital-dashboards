@@ -104,10 +104,10 @@ describe("the module and middleware generators in mock mode", () => {
 
   it("refuses what the module generator refuses", async () => {
     const plan = (input: unknown) => post("/_portal/api/generators/module/plan", { input });
-    let res = await plan({ name: "Review", fields: ["title:string"], org: true });
-    expect(res.status).toBe(422);
-    expect(((await res.json()) as Problem).detail).toMatch(/Phase 7/);
-    res = await plan({ name: "Review", fields: ["nickname:string?"] });
+    const org = await plan({ name: "Review", fields: ["title:string"], org: true });
+    expect(org.status).toBe(200);
+    expect(((await org.json()) as { plan: { result: unknown } }).plan.result).toMatchObject({ route: "/v1/orgs/{orgId}/reviews", scope: "org" });
+    let res = await plan({ name: "Review", fields: ["nickname:string?"] });
     expect(((await res.json()) as Problem).detail).toMatch(/required string field/);
     res = await plan({ name: "Review", fields: ["nickname:string?:unique", "title:string"] });
     expect(((await res.json()) as Problem).detail).toMatch(/only required string fields can be unique/);

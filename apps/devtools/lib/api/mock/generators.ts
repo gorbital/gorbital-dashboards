@@ -403,7 +403,6 @@ const modulePluralize = (w: string) => (/(l|ea|i)fe?$/.test(w) ? w.replace(/fe?$
 function planModule(input: Record<string, unknown>): GeneratorResponse | Problem {
   const name = str(input.name);
   if (!name || name.length > 40 || !/^[A-Za-z][A-Za-z0-9_-]*$/.test(name)) return usage("module name must start with a letter and use letters, digits, hyphens or underscores (max 40), such as Shelf");
-  if (input.org === true) return usage("Organisation scoping arrives with Phase 7 (orgs); the generator refuses --org until then");
   const fields = parseFields(input.fields, true);
   if (!Array.isArray(fields)) return fields;
   const ws = words(name);
@@ -412,7 +411,8 @@ function planModule(input: Record<string, unknown>): GeneratorResponse | Problem
   const Plural = ident(pws);
   const pkg = pws.join("");
   const table = pws.join("_");
-  const route = `/v1/${pws.join("-")}`;
+  const org = input.org === true;
+  const route = org ? `/v1/orgs/{orgId}/${pws.join("-")}` : `/v1/${pws.join("-")}`;
   const snakeName = ws.join("_");
   const prefix = str(input.id_prefix) || (snakeName[0] + snakeName.slice(1).replace(/[aeiou_]/g, "")).slice(0, 3);
   if (!/^[a-z]{2,8}$/.test(prefix)) return usage(`ID prefix "${prefix}" must be 2 to 8 lowercase letters; pass --id-prefix`);
@@ -461,14 +461,14 @@ function planModule(input: Record<string, unknown>): GeneratorResponse | Problem
   ];
   const migration = changes.find((c) => c.path.startsWith("db/migrations/"))!.path;
   const fieldDesc = (f: Field) => (f.kind === "string" ? `string, ${f.optional ? "optional, up to 100" : "1 to 100"} characters${f.unique ? ", unique" : ""}` : f.kind === "text" ? "text, up to 2000 characters" : `one of ${f.values.join(", ")}`);
-  const summary = `  Module:    ${pkg} (${Ident}, table ${table}, IDs like ${prefix}_…)\n  API:       ${route}, for the signed-in user's ${pws.join(" ")}\n  Permissions: ${perms.join(", ")}\n  Fields:\n${fields.map((f) => `    ${f.name.padEnd(20)} ${fieldDesc(f)}`).join("\n")}\n  Files:\n${changes.map((c) => `    ${c.path}`).join("\n")}`;
+  const summary = `  Module:    ${pkg} (${Ident}, table ${table}, IDs like ${prefix}_…)\n  API:       ${route}, for ${org ? `an organisation's ${pws.join(" ")} (guard.OrgMember)` : `the signed-in user's ${pws.join(" ")}`}\n  Permissions: ${perms.join(", ")}\n  Fields:\n${fields.map((f) => `    ${f.name.padEnd(20)} ${fieldDesc(f)}`).join("\n")}\n  Files:\n${changes.map((c) => `    ${c.path}`).join("\n")}`;
   const plan: Plan = {
     generator: "module",
     name: Ident,
     summary,
     changes,
     next: ["go run ./cmd/migrate", "go test ./internal/modules/" + pkg + "/...", "Give roles the permissions in the admin API: " + perms.join(", ")],
-    result: { name: Ident, module: pkg, route, table, scope: "user", permissions: perms, migration, files: changes.map((c) => c.path), dry_run: false },
+    result: { name: Ident, module: pkg, route, table, scope: org ? "org" : "user", permissions: perms, migration, files: changes.map((c) => c.path), dry_run: false },
   };
   return { plan, applied: false };
 }

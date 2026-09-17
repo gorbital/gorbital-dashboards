@@ -8,9 +8,11 @@
  * a token or a secret the app keeps: the TOTP secret is a throwaway one.
  */
 
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@gorbital/dash/components/toast";
-import { apiFetch } from "./client";
+import { finishedId, POLL_MS, shouldPoll } from "../signin-tests/signin-tests";
+import { ApiError, apiFetch } from "./client";
 import { errorMessage } from "./errors";
 import { retry } from "./queries";
 
@@ -197,4 +199,86 @@ export function useVerifyTotp() {
 export function useRefreshSignInTests() {
   const qc = useQueryClient();
   return () => qc.invalidateQueries({ queryKey: signInTestKeys.list });
+}
+
+export type SignInTestWatch = {
+  result: SignInTestResult | undefined;
+  error: unknown;
+  /** Still waiting: no final state yet, not expired, no fatal error. */
+  waiting: boolean;
+};
+
+/**
+ * Follows one round trip until it is final: asks every 1.5 s until
+ * `expires_at`, and at once when the result page says it finished (on the
+ * BroadcastChannel, or a `message` from this origin posted by the popup).
+ */
+export function useSignInTestResult(test: Pick<SignInTestStart, "id" | "expires_at"> | null): SignInTestWatch {
+  const [state, setState] = useState<{ id: string; result?: SignInTestResult; error?: unknown; waiting: boolean }>({ id: "", waiting: false });
+
+  const testId = test?.id;
+  const testExpiry = test?.expires_at;
+
+  useEffect(() => {
+    if (!testId || !testExpiry) {
+      setState({ id: "", waiting: false });
+      return;
+    }
+    const id = testId;
+    const expires_at = testExpiry;
+    setState({ id, waiting: true });
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let channel: BroadcastChannel | null = null;
+
+    const stop = () => {
+      stopped = true;
+      if (timer) clearTimeout(timer);
+      channel?.close();
+      window.removeEventListener("message", onWindowMessage);
+    };
+    const read = async () => {
+      if (stopped) return;
+      try {
+        const result = await fetchSignInTestResult(id);
+        if (stopped) return;
+        const more = shouldPoll(result, expires_at, Date.now());
+        setState({ id, result, waiting: more });
+        if (!more) stop();
+      } catch (error) {
+        if (stopped) return;
+        const fatal = error instanceof ApiError && error.status === 404;
+        const expired = !shouldPoll(undefined, expires_at, Date.now());
+        setState((s) => ({ ...s, id, error, waiting: !fatal && !expired }));
+        if (fatal || expired) stop();
+      }
+    };
+    const schedule = () => {
+      timer = setTimeout(async () => {
+        await read();
+        if (stopped) return;
+        if (!shouldPoll(undefined, expires_at, Date.now())) {
+          setState((s) => ({ ...s, waiting: false }));
+          stop();
+          return;
+        }
+        schedule();
+      }, POLL_MS);
+    };
+    function onWindowMessage(e: MessageEvent) {
+      if (finishedId(e.data, { got: e.origin, want: window.location.origin }) === id) void read();
+    }
+    if (typeof BroadcastChannel !== "undefined") {
+      channel = new BroadcastChannel(SIGN_IN_TEST_CHANNEL);
+      channel.onmessage = (e: MessageEvent) => {
+        if (finishedId(e.data) === id) void read();
+      };
+    }
+    window.addEventListener("message", onWindowMessage);
+    schedule();
+    return stop;
+  }, [testId, testExpiry]);
+
+  const current = test && state.id === test.id ? state : undefined;
+  return { result: current?.result, error: current?.error, waiting: Boolean(test) && (current ? current.waiting : true) };
 }

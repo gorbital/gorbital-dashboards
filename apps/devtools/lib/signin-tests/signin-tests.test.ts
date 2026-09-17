@@ -35,16 +35,16 @@ describe("test sign-in rules", () => {
     expect(methodForRoutePath("/v1/auth/passkeys")).toBe("passkeys");
     expect(methodForRoutePath("/v1/auth/mfa/totp/enroll")).toBe("authenticator_app");
     expect(methodForRoutePath("/v1/auth/login")).toBeUndefined();
-    expect(testSignInHref("/v1/auth/google/callback")).toBe("/auth/?tab=tests&method=google");
-    expect(testSignInHref("/v1/auth/mfa/totp/verify")).toBe("/auth/?tab=tests&method=authenticator_app");
-    expect(testSignInHref("/v1/auth/login")).toBe("/auth/?tab=tests");
+    expect(testSignInHref("/v1/auth/google/callback")).toBe("/auth?tab=tests&method=google");
+    expect(testSignInHref("/v1/auth/mfa/totp/verify")).toBe("/auth?tab=tests&method=authenticator_app");
+    expect(testSignInHref("/v1/auth/login")).toBe("/auth?tab=tests");
     expect(testSignInHref("/v1/users/google/x")).toBeNull();
   });
 
   it("links checks to console pages and the guide", () => {
-    expect(checkLinkHref("environment")).toMatchObject({ href: "/environment/", external: false });
-    expect(checkLinkHref("tunnel").href).toBe("/tunnel/");
-    expect(checkLinkHref("mail").href).toBe("/mail/");
+    expect(checkLinkHref("environment")).toMatchObject({ href: "/environment", external: false });
+    expect(checkLinkHref("tunnel").href).toBe("/tunnel");
+    expect(checkLinkHref("mail").href).toBe("/mail");
     expect(checkLinkHref("guide")).toMatchObject({ href: "https://gorbital.dev/docs/guides/auth-providers", external: true });
   });
 

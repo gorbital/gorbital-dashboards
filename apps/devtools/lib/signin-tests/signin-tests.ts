@@ -35,22 +35,22 @@ export function methodForRoutePath(path: string): SignInMethodKey | undefined {
   return undefined;
 }
 
-/** `/auth/?tab=tests[&method=…]` for a route under /v1/auth/, or null. */
+/** `/auth?tab=tests[&method=…]` for a route under /v1/auth/, or null. */
 export function testSignInHref(path: string): string | null {
   if (!path.startsWith("/v1/auth/")) return null;
   const method = methodForRoutePath(path);
-  return `/auth/?tab=tests${method ? `&method=${method}` : ""}`;
+  return `/auth?tab=tests${method ? `&method=${method}` : ""}`;
 }
 
 /** Where a check's link goes: a console page, or the providers guide. */
 export function checkLinkHref(link: CheckLink): { href: string; label: string; external: boolean } {
   switch (link) {
     case "environment":
-      return { href: "/environment/", label: "Environment", external: false };
+      return { href: "/environment", label: "Environment", external: false };
     case "tunnel":
-      return { href: "/tunnel/", label: "Tunnel", external: false };
+      return { href: "/tunnel", label: "Tunnel", external: false };
     case "mail":
-      return { href: "/mail/", label: "Mail", external: false };
+      return { href: "/mail", label: "Mail", external: false };
     case "guide":
       return { href: GUIDE_URL, label: "Providers guide", external: true };
   }

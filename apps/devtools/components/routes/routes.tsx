@@ -17,6 +17,7 @@ import { readBearerToken } from "@/lib/api/bearer-token";
 import { useCapabilities, useDevRoutes } from "@/lib/api/queries";
 import { methodsWithBody, pathParams, proxyAddsAuth, sendRequest, type AuthMode, type KeyValue, type RequestSpec, type SentRequest } from "@/lib/api/request-builder";
 import { useRouteInfo } from "@/lib/api/routes";
+import { testSignInHref } from "@/lib/signin-tests/signin-tests";
 import { filterRoutes, isPublic, joinRoutes, routeKey, routeTags, type JoinedRoute, type RouteSourceFilter } from "@/lib/routes/join";
 import { clock } from "@/lib/time";
 import { Gate } from "@/components/shared/gate";
@@ -168,6 +169,17 @@ function TagItem({ label, count, active, onClick }: { label: string; count: numb
   );
 }
 
+/** For routes under /v1/auth/: a way to the Authentication screen's live test of that method. */
+function TestSignInLink({ path }: { path: string }) {
+  const href = testSignInHref(path);
+  if (!href) return null;
+  return (
+    <Link href={href} onClick={(e) => e.stopPropagation()} className="ml-1 shrink-0 font-sans text-[10.5px] text-info hover:underline">
+      Test sign-in
+    </Link>
+  );
+}
+
 function routeColumns(guardsKnown: boolean, consoleList: boolean): Column<JoinedRoute>[] {
   return [
     { key: "m", header: "Method", width: "76px", cell: (r) => <Method m={r.method} /> },
@@ -189,6 +201,7 @@ function routeColumns(guardsKnown: boolean, consoleList: boolean): Column<Joined
                 ),
               )}
             </span>
+            <TestSignInLink path={r.path} />
           </div>
           {(r.operation_id || r.summary) && (
             <div className="mt-0.5 truncate text-[11px] text-dim">

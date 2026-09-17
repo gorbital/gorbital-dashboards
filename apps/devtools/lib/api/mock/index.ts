@@ -66,6 +66,7 @@ import { mockFlagsFetch, resetMockFlags } from "./flags";
 import { deliverMockMail, mockMailFetch, mockMailPreviewFetch, resetMockMail } from "./mail";
 import { mockProjectFetch, mockRestarted, mockServiceAccountsFetch, resetMockProject } from "./project";
 import { mockSqlFetch } from "./sql";
+import { mockTunnelFetch, resetMockTunnel } from "./tunnel";
 import { mockStorageFetch, resetMockStorage } from "./storage";
 import { mockDb, mockSchemaRestarted, resetMockDb as resetMockSchema, schemaStatus, setSchemaListener, startSchemaDemo, type SchemaDemo } from "./schema";
 
@@ -232,6 +233,7 @@ export function resetMock() {
   resetMockGenerators();
   resetMockRoutes();
   resetMockProject();
+  resetMockTunnel();
 }
 
 /* ---------- Responses ---------- */
@@ -438,6 +440,8 @@ export async function mockFetch(input: string, init: RequestInit = {}): Promise<
     if (hub) return hub;
     return json(plan(gen[1], input, gen[2] === "apply"));
   }
+  const tunnel = mockTunnelFetch(p, method, init.body, (status) => publish({ type: "tunnel", time: now(), tunnel: status }), addLine); // the tunnel (mock/tunnel.ts)
+  if (tunnel) return tunnel;
   const project = mockProjectFetch(url, method, init, app, addLine); // Project Settings, the env editor, the inbox's clear (mock/project.ts)
   if (project) return project;
   if (p === "/_portal/api/jobs" && method === "GET") return json({ jobs: sources });

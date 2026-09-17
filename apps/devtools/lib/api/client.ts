@@ -1,6 +1,7 @@
 import { dataMode } from "./mode";
 import { readSSE, type SSEMessage } from "./sse";
 import type { AppStatus, DevStreamEvent, OutputLine, PortalEvent, Problem, SchemaStatus } from "./types";
+import type { TunnelStatus } from "./tunnel";
 
 /** Every request that isn't GET or HEAD must carry it; the portal refuses the rest with 403. */
 export const MUTATION_HEADER = "X-Orb-Portal";
@@ -237,6 +238,10 @@ export function parseEvent(event: string, data: string): PortalEvent | null {
   }
   if (event === "schema" && o.type === "schema" && o.schema && typeof o.schema === "object") {
     return { type: "schema", time: String(o.time ?? ""), schema: normaliseSchemaStatus(o.schema as Partial<SchemaStatus>) };
+  }
+  if (event === "tunnel" && o.type === "tunnel" && o.tunnel && typeof o.tunnel === "object") {
+    const t = o.tunnel as TunnelStatus;
+    return { type: "tunnel", time: String(o.time ?? ""), tunnel: { ...t, log: Array.isArray(t.log) ? t.log : [] } };
   }
   if (event === "dropped" && typeof o.count === "number") return { type: "dropped", time: new Date().toISOString(), count: o.count };
   return null;

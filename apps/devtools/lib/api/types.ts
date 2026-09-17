@@ -12,6 +12,8 @@
  * notes.
  */
 
+import type { TunnelStatus } from "./tunnel";
+
 /* ---------- Errors ---------- */
 
 /** RFC 9457 problem details, as both the portal and the app send them (`application/problem+json`). */
@@ -151,6 +153,7 @@ export type PortalEvent =
   | { type: "state"; time: string; state: AppStatus }
   | { type: "output"; time: string; output: OutputLine }
   | { type: "schema"; time: string; schema: SchemaStatus }
+  | { type: "tunnel"; time: string; tunnel: TunnelStatus }
   | { type: "dropped"; time: string; count: number };
 
 /* ---------- Generators ---------- */

@@ -8,6 +8,7 @@ import { apiFetch, subscribeEvents } from "./client";
 import { keys } from "./queries";
 import { applySchemaEvent, invalidateSchemaViews, isRebuildFinished, schemaStatusKey, schemaToast } from "./schema-status";
 import { consoleStore } from "./store";
+import { applyTunnelEvent } from "./tunnel";
 import type { AppState, OutputList, SchemaStatus, Status } from "./types";
 
 /**
@@ -37,6 +38,11 @@ export function DevtoolsProvider({ children }: { children: ReactNode }) {
           applySchemaEvent(client, e.schema);
           const t = schemaToast(e.schema, previous);
           if (t) (t.kind === "success" ? toast.success : toast.info)(t.title, { description: t.description });
+          return;
+        }
+        if (e.type === "tunnel") {
+          applyTunnelEvent(client, e.tunnel);
+          void client.invalidateQueries({ queryKey: ["portal", "tunnel", "setup"] });
           return;
         }
         if (e.type !== "state") return;

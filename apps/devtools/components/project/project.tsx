@@ -9,6 +9,7 @@ import { Empty } from "@gorbital/dash/components/panel";
 import { SkeletonLines } from "@gorbital/dash/components/spinner";
 import { isNoEnvEditor, useEnv } from "@/lib/api/env";
 import { isNoProjectSettings, useProject } from "@/lib/api/project";
+import type { Project } from "@/lib/api/types";
 import { useAppAction, useStatus } from "@/lib/api/queries";
 import { ProblemPanel } from "@/components/shared/problem-panel";
 import { CorsEditor } from "./cors-editor";
@@ -17,6 +18,17 @@ import { KeysSection } from "./keys";
 import { AppSection, DatabaseSection, LoggingSection, MailSection, PortsSection, StorageSection } from "./sections";
 
 /** Project Settings (ADR-0077): the app as the manifest and .env describe it, each value with its env key, edited through the env editor with a restart offered; keys from the ops API; the danger zone. */
+/**
+ * profileWords says how the app was made, in the words its own manifest
+ * uses: the sign-in it serves and what it calls a tenant (`orb new --auth`
+ * and `--scope`, from v0.3.0), or the `tenancy` an older app recorded
+ * instead. An app that declares neither gets nothing rather than a guess.
+ */
+function profileWords(p: Pick<Project, "auth" | "scope" | "tenancy">): string {
+  const parts = [p.auth && `auth ${p.auth}`, p.scope ?? p.tenancy].filter(Boolean);
+  return parts.length ? ` · ${parts.join(" · ")}` : "";
+}
+
 export function ProjectSettingsPage() {
   const project = useProject();
   const status = useStatus();
@@ -30,7 +42,7 @@ export function ProjectSettingsPage() {
 
   return (
     <Page>
-      <PageHeader product="devtools" title="Project" description={s ? `${s.name} · ${s.module} · ${s.preset}${s.tenancy ? ` · ${s.tenancy}` : ""} · /_portal/api/project` : "name, ports, database, mail, storage, CORS, logging, keys and the danger zone"}>
+      <PageHeader product="devtools" title="Project" description={s ? `${s.name} · ${s.module} · ${s.preset}${profileWords(s)} · /_portal/api/project` : "name, ports, database, mail, storage, CORS, logging, keys and the danger zone"}>
         <Link href="/generators">
           <Button size="sm" kind="secondary" icon={<ArrowRight size={11} />}>
             Generators

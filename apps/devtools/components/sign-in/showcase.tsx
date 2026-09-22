@@ -119,22 +119,16 @@ export function Showcase() {
           <p className="max-w-[52ch] text-[13px] leading-relaxed text-muted">{slide.body}</p>
         </div>
 
-        {/* The screen in a device, turned away from the reader and running off
-            the bottom of the panel — the shape a machine on a desk makes,
-            rather than a picture pasted flat. Every screenshot is mounted
+        {/* The screen, straight on and large, running past the panel's
+            bottom corners — the panel crops it, which is what gives the
+            page its depth instead of a tilt. Every screenshot is mounted
             from the start and they cross-fade: remounting the img made the
             browser decode it again on each change, which showed as a blank
             frame. */}
-        <div className="relative mt-3 flex-1" style={{ perspective: "1800px" }}>
-          <div
-            className="absolute inset-x-1 top-10"
-            style={{ transform: "rotateX(6deg) rotateY(-14deg) rotateZ(1deg)", transformOrigin: "center top" }}
-          >
-            {/* Capped so the screenshot is not upscaled much: the source is
-                1440px wide, and a display at device pixel ratio 2 asks for
-                twice whatever this renders at. */}
-            <div className="mx-auto max-w-[860px] rounded-[18px] border border-white/10 bg-black/50 p-2.5 shadow-[0_50px_90px_-25px_rgb(0_0_0/0.85)] backdrop-blur-sm">
-              <div className="relative overflow-hidden rounded-[10px] ring-1 ring-white/5">
+        <div className="relative mt-6 flex-1">
+          <div className="absolute inset-x-0 top-0 -mx-[9%] w-[118%]">
+            <div className="rounded-t-[18px] border border-b-0 border-white/10 bg-black/50 p-2.5 pb-0 shadow-[0_-10px_90px_-20px_rgb(0_0_0/0.8)] backdrop-blur-sm">
+              <div className="relative overflow-hidden rounded-t-[10px] ring-1 ring-white/5">
                 {SLIDES.map((s, i) => (
                   // eslint-disable-next-line @next/next/no-img-element -- a static export has no image optimiser
                   <img

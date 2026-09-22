@@ -119,16 +119,16 @@ export function Showcase() {
           <p className="max-w-[52ch] text-[13px] leading-relaxed text-muted">{slide.body}</p>
         </div>
 
-        {/* The screen, straight on and large, running past the panel's
-            bottom corners — the panel crops it, which is what gives the
-            page its depth instead of a tilt. Every screenshot is mounted
-            from the start and they cross-fade: remounting the img made the
-            browser decode it again on each change, which showed as a blank
-            frame. */}
+        {/* The screen, straight on and large. Its top and left edges stay in
+            the panel and it runs off the bottom-right corner, which the
+            panel crops — that corner is what gives the page depth, in place
+            of a tilt. Every screenshot is mounted from the start and they
+            cross-fade: remounting the img made the browser decode it again
+            on each change, which showed as a blank frame. */}
         <div className="relative mt-6 flex-1">
-          <div className="absolute inset-x-0 top-0 -mx-[9%] w-[118%]">
-            <div className="rounded-t-[18px] border border-b-0 border-white/10 bg-black/50 p-2.5 pb-0 shadow-[0_-10px_90px_-20px_rgb(0_0_0/0.8)] backdrop-blur-sm">
-              <div className="relative overflow-hidden rounded-t-[10px] ring-1 ring-white/5">
+          <div className="absolute -right-[30%] left-0 top-0">
+            <div className="rounded-tl-[18px] border-l border-t border-white/10 bg-black/50 p-2.5 pb-0 pr-0 shadow-[0_-10px_90px_-20px_rgb(0_0_0/0.8)] backdrop-blur-sm">
+              <div className="relative overflow-hidden rounded-tl-[10px] ring-1 ring-white/5">
                 {SLIDES.map((s, i) => (
                   // eslint-disable-next-line @next/next/no-img-element -- a static export has no image optimiser
                   <img

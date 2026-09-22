@@ -8,6 +8,7 @@ import { PortalVersion } from "@/components/portal-version";
 import { Search } from "@/components/search";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { DevtoolsProvider } from "@/lib/api/provider";
+import { SignInGate } from "@/components/sign-in/gate";
 import "./globals.css";
 
 const manrope = Manrope({ subsets: ["latin", "latin-ext"], weight: "variable", variable: "--font-manrope", display: "swap" });
@@ -38,19 +39,21 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body suppressHydrationWarning>
         <DevtoolsProvider>
-          <Shell
-            product="devtools"
-            variant="boxed"
-            version={<PortalVersion fallback="v0.1" />}
-            nav={<SidebarNav />}
-            app={{ name: "acme-api", env: ":8080" }}
-            appChip={<LiveAppChip />}
-            user={{ name: "orb dev · local", initials: "MQ" }}
-            searchHint={searchHint}
-            search={<Search hint={searchHint} />}
-          >
-            {children}
-          </Shell>
+          <SignInGate>
+            <Shell
+              product="devtools"
+              variant="boxed"
+              version={<PortalVersion fallback="v0.1" />}
+              nav={<SidebarNav />}
+              app={{ name: "acme-api", env: ":8080" }}
+              appChip={<LiveAppChip />}
+              user={{ name: "orb dev · local", initials: "MQ" }}
+              searchHint={searchHint}
+              search={<Search hint={searchHint} />}
+            >
+              {children}
+            </Shell>
+          </SignInGate>
         </DevtoolsProvider>
       </body>
     </html>

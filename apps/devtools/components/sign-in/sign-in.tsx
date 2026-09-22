@@ -29,7 +29,7 @@ export function SignIn() {
   }
 
   return (
-    <div className="grid min-h-dvh gap-4 bg-bg p-4 lg:grid-cols-[1.45fr_minmax(380px,0.55fr)]">
+    <div className="grid min-h-dvh bg-bg lg:grid-cols-[1.45fr_minmax(380px,0.55fr)]">
       <Showcase />
 
       <main className="relative flex flex-col items-center justify-center px-6 py-12">

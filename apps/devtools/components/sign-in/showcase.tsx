@@ -61,16 +61,14 @@ export function Showcase() {
 
   useEffect(() => {
     if (still) return;
-    const id = setInterval(() => {
-      setAt((i) => (i + 1) % SLIDES.length);
-    }, EVERY);
-    return () => clearInterval(id);
-  }, [still]);
+    const id = setTimeout(() => setAt((i) => (i + 1) % SLIDES.length), EVERY);
+    return () => clearTimeout(id);
+  }, [still, at]);
 
   const slide = SLIDES[at];
 
   return (
-    <aside aria-label="What the Dev Portal shows" className="relative hidden overflow-hidden rounded-2xl border border-border bg-surface lg:block">
+    <aside aria-label="What the Dev Portal shows" className="relative hidden overflow-hidden bg-surface lg:block">
       {/* The aurora: four lights in the product's colours, each drifting on its
           own clock so the background never repeats a pose. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -92,8 +90,19 @@ export function Showcase() {
               aria-selected={i === at}
               aria-label={s.tab}
               onClick={() => setAt(i)}
-              className={`h-[3px] rounded-full transition-all duration-500 ${i === at ? "w-8 bg-text" : "w-4 bg-text/25 hover:bg-text/40"}`}
-            />
+              className={`h-[3px] overflow-hidden rounded-full bg-text/20 transition-all duration-500 ${i === at ? "w-10" : "w-4 hover:bg-text/40"}`}
+            >
+              {i === at && (
+                // Fills over the slide's own time, so the bar is the countdown
+                // to the next one. It remounts with the slide, which restarts
+                // it; without motion it simply sits full.
+                <span
+                  key={at}
+                  className="block h-full rounded-full bg-text"
+                  style={still ? { width: "100%" } : { animation: `slideProgress ${EVERY}ms linear forwards` }}
+                />
+              )}
+            </button>
           ))}
         </div>
 
@@ -125,6 +134,7 @@ export function Showcase() {
       </div>
 
       <style>{`
+        @keyframes slideProgress { from { width: 0%; } to { width: 100%; } }
         @keyframes auroraA { 0%,100% { transform: translate3d(0,0,0) scale(1) rotate(0deg); } 33% { transform: translate3d(14%,10%,0) scale(1.18) rotate(22deg); } 66% { transform: translate3d(-6%,16%,0) scale(0.94) rotate(-14deg); } }
         @keyframes auroraB { 0%,100% { transform: translate3d(0,0,0) scale(1.06) rotate(0deg); } 50% { transform: translate3d(-18%,14%,0) scale(0.9) rotate(-26deg); } }
         @keyframes auroraC { 0%,100% { transform: translate3d(0,0,0) scale(0.95) rotate(0deg); } 40% { transform: translate3d(16%,-14%,0) scale(1.2) rotate(18deg); } 75% { transform: translate3d(-10%,-6%,0) scale(1.05) rotate(-10deg); } }

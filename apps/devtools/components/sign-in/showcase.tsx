@@ -75,12 +75,12 @@ export function Showcase() {
           own clock so the background never repeats a pose. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute inset-0 bg-bg" />
-        <div className="absolute left-[-20%] top-[-25%] h-[75%] w-[75%] rounded-full bg-[radial-gradient(circle_at_center,var(--color-primary)_0%,transparent_62%)] opacity-55 blur-[70px] motion-safe:animate-[auroraA_19s_ease-in-out_infinite]" />
-        <div className="absolute right-[-15%] top-[10%] h-[65%] w-[65%] rounded-full bg-[radial-gradient(circle_at_center,var(--color-primary-mid)_0%,transparent_60%)] opacity-50 blur-[80px] motion-safe:animate-[auroraB_24s_ease-in-out_infinite]" />
-        <div className="absolute bottom-[-25%] left-[10%] h-[70%] w-[70%] rounded-full bg-[radial-gradient(circle_at_center,var(--color-primary-deep)_0%,transparent_65%)] opacity-60 blur-[75px] motion-safe:animate-[auroraC_21s_ease-in-out_infinite]" />
-        <div className="absolute bottom-[5%] right-[5%] h-[45%] w-[45%] rounded-full bg-[radial-gradient(circle_at_center,var(--color-primary-soft)_0%,transparent_60%)] opacity-30 blur-[90px] motion-safe:animate-[auroraD_27s_ease-in-out_infinite]" />
+        <div className="absolute left-[-20%] top-[-25%] h-[85%] w-[85%] rounded-full bg-[radial-gradient(circle_at_center,var(--color-primary)_0%,transparent_62%)] opacity-75 blur-[60px] motion-safe:animate-[auroraA_19s_ease-in-out_infinite]" />
+        <div className="absolute right-[-15%] top-[10%] h-[75%] w-[75%] rounded-full bg-[radial-gradient(circle_at_center,var(--color-primary-mid)_0%,transparent_60%)] opacity-65 blur-[70px] motion-safe:animate-[auroraB_24s_ease-in-out_infinite]" />
+        <div className="absolute bottom-[-25%] left-[10%] h-[80%] w-[80%] rounded-full bg-[radial-gradient(circle_at_center,var(--color-primary-deep)_0%,transparent_65%)] opacity-75 blur-[65px] motion-safe:animate-[auroraC_21s_ease-in-out_infinite]" />
+        <div className="absolute bottom-[5%] right-[5%] h-[60%] w-[60%] rounded-full bg-[radial-gradient(circle_at_center,var(--color-primary-soft)_0%,transparent_60%)] opacity-50 blur-[80px] motion-safe:animate-[auroraD_27s_ease-in-out_infinite]" />
         {/* Settles the colour so the words on top keep their contrast. */}
-        <div className="absolute inset-0 bg-gradient-to-br from-bg/35 via-bg/10 to-bg/75" />
+        <div className="absolute inset-0 bg-gradient-to-br from-bg/25 via-transparent to-bg/55" />
       </div>
 
       <div className="relative flex h-full flex-col gap-6 p-10">

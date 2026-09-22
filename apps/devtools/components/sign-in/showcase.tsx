@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * What the panel cycles through: the screens the portal is for, each one a
@@ -50,7 +50,6 @@ const EVERY = 6000;
 export function Showcase() {
   const [at, setAt] = useState(0);
   const [still, setStill] = useState(false);
-  const paused = useRef(false);
 
   useEffect(() => {
     const motion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
@@ -63,7 +62,7 @@ export function Showcase() {
   useEffect(() => {
     if (still) return;
     const id = setInterval(() => {
-      if (!paused.current) setAt((i) => (i + 1) % SLIDES.length);
+      setAt((i) => (i + 1) % SLIDES.length);
     }, EVERY);
     return () => clearInterval(id);
   }, [still]);
@@ -71,17 +70,17 @@ export function Showcase() {
   const slide = SLIDES[at];
 
   return (
-    <aside
-      aria-label="What the Dev Portal shows"
-      onMouseEnter={() => (paused.current = true)}
-      onMouseLeave={() => (paused.current = false)}
-      className="relative hidden overflow-hidden rounded-2xl border border-border bg-surface lg:block"
-    >
-      {/* The light behind it: two slow blooms in the product's own colour. */}
-      <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-24 -top-24 h-[420px] w-[420px] rounded-full bg-primary/20 blur-3xl motion-safe:animate-[bloom_14s_ease-in-out_infinite]" />
-        <div className="absolute -bottom-32 -right-16 h-[380px] w-[380px] rounded-full bg-primary-deep/35 blur-3xl motion-safe:animate-[bloom_18s_ease-in-out_infinite_reverse]" />
-        <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-bg/70" />
+    <aside aria-label="What the Dev Portal shows" className="relative hidden overflow-hidden rounded-2xl border border-border bg-surface lg:block">
+      {/* The aurora: four lights in the product's colours, each drifting on its
+          own clock so the background never repeats a pose. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 bg-bg" />
+        <div className="absolute left-[-20%] top-[-25%] h-[75%] w-[75%] rounded-full bg-[radial-gradient(circle_at_center,var(--color-primary)_0%,transparent_62%)] opacity-55 blur-[70px] motion-safe:animate-[auroraA_19s_ease-in-out_infinite]" />
+        <div className="absolute right-[-15%] top-[10%] h-[65%] w-[65%] rounded-full bg-[radial-gradient(circle_at_center,var(--color-primary-mid)_0%,transparent_60%)] opacity-50 blur-[80px] motion-safe:animate-[auroraB_24s_ease-in-out_infinite]" />
+        <div className="absolute bottom-[-25%] left-[10%] h-[70%] w-[70%] rounded-full bg-[radial-gradient(circle_at_center,var(--color-primary-deep)_0%,transparent_65%)] opacity-60 blur-[75px] motion-safe:animate-[auroraC_21s_ease-in-out_infinite]" />
+        <div className="absolute bottom-[5%] right-[5%] h-[45%] w-[45%] rounded-full bg-[radial-gradient(circle_at_center,var(--color-primary-soft)_0%,transparent_60%)] opacity-30 blur-[90px] motion-safe:animate-[auroraD_27s_ease-in-out_infinite]" />
+        {/* Settles the colour so the words on top keep their contrast. */}
+        <div className="absolute inset-0 bg-gradient-to-br from-bg/35 via-bg/10 to-bg/75" />
       </div>
 
       <div className="relative flex h-full flex-col gap-6 p-10">
@@ -105,11 +104,11 @@ export function Showcase() {
         </div>
 
         {/* The screen itself, tilted and running off the edge. */}
-        <div className="relative mt-2 flex-1" style={{ perspective: "1400px" }}>
+        <div className="relative mt-2 flex-1 px-2" style={{ perspective: "1600px" }}>
           <div
             key={`shot-${at}`}
-            className="absolute -right-16 top-0 w-[820px] overflow-hidden rounded-xl border border-border shadow-2xl motion-safe:animate-rise"
-            style={{ transform: "rotateX(4deg) rotateY(-16deg) rotateZ(1deg)", transformOrigin: "left center" }}
+            className="absolute inset-x-0 top-0 overflow-hidden rounded-xl border border-border shadow-2xl motion-safe:animate-rise"
+            style={{ transform: "rotateX(3deg) rotateY(-11deg) rotateZ(0.6deg) scale(0.97)", transformOrigin: "center center" }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- a static export has no image optimiser */}
             <img
@@ -125,7 +124,12 @@ export function Showcase() {
         </div>
       </div>
 
-      <style>{`@keyframes bloom { 0%,100% { transform: translate3d(0,0,0) scale(1); } 50% { transform: translate3d(24px,-18px,0) scale(1.12); } }`}</style>
+      <style>{`
+        @keyframes auroraA { 0%,100% { transform: translate3d(0,0,0) scale(1) rotate(0deg); } 33% { transform: translate3d(14%,10%,0) scale(1.18) rotate(22deg); } 66% { transform: translate3d(-6%,16%,0) scale(0.94) rotate(-14deg); } }
+        @keyframes auroraB { 0%,100% { transform: translate3d(0,0,0) scale(1.06) rotate(0deg); } 50% { transform: translate3d(-18%,14%,0) scale(0.9) rotate(-26deg); } }
+        @keyframes auroraC { 0%,100% { transform: translate3d(0,0,0) scale(0.95) rotate(0deg); } 40% { transform: translate3d(16%,-14%,0) scale(1.2) rotate(18deg); } 75% { transform: translate3d(-10%,-6%,0) scale(1.05) rotate(-10deg); } }
+        @keyframes auroraD { 0%,100% { transform: translate3d(0,0,0) scale(1); } 50% { transform: translate3d(-14%,-18%,0) scale(1.25); } }
+      `}</style>
     </aside>
   );
 }

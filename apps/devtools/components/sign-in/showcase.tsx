@@ -12,31 +12,31 @@ const SLIDES = [
     tab: "Table Editor",
     title: "Your schema, editable",
     body: "Browse and change tables, columns and rows. Every change leaves as a migration in db/migrations, so the code stays the source of truth.",
-    src: "/screens/table-editor.jpg",
+    src: "/screens/table-editor.png",
   },
   {
     tab: "SQL Editor",
     title: "SQL, and the migration after it",
     body: "Run a query, read the plan, keep the statement as a snippet — or turn the statement you just ran into a migration.",
-    src: "/screens/sql-editor.jpg",
+    src: "/screens/sql-editor.png",
   },
   {
     tab: "Logs",
     title: "Every request, every line",
     body: "Requests and logs as they happen, filtered and grouped, with the log lines of one request under the request itself.",
-    src: "/screens/logs.jpg",
+    src: "/screens/logs.png",
   },
   {
     tab: "Jobs",
     title: "Jobs you can watch",
     body: "Queues, schedules and what each run did, with the failures kept where you can read them.",
-    src: "/screens/jobs.jpg",
+    src: "/screens/jobs.png",
   },
   {
     tab: "Generators",
     title: "The generators orb runs",
     body: "A module, a job, a migration, middleware: the portal plans and applies them through the same code as orb gen, and shows the diff first.",
-    src: "/screens/generators.jpg",
+    src: "/screens/generators.png",
   },
 ];
 
@@ -112,23 +112,29 @@ export function Showcase() {
           <p className="max-w-[52ch] text-[13px] leading-relaxed text-muted">{slide.body}</p>
         </div>
 
-        {/* The screen itself, tilted and running off the edge. */}
+        {/* The screens, tilted and stacked. Every one is mounted from the
+            start and they cross-fade: remounting the image made the browser
+            decode it again on each change, which showed as a blank frame. */}
         <div className="relative mt-2 flex-1 px-2" style={{ perspective: "1600px" }}>
           <div
-            key={`shot-${at}`}
-            className="absolute inset-x-0 top-0 overflow-hidden rounded-xl border border-border shadow-2xl motion-safe:animate-rise"
+            className="absolute inset-x-0 top-0 overflow-hidden rounded-xl border border-border shadow-2xl"
             style={{ transform: "rotateX(3deg) rotateY(-11deg) rotateZ(0.6deg) scale(0.97)", transformOrigin: "center center" }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element -- a static export has no image optimiser */}
-            <img
-              src={slide.src}
-              alt={`The Dev Portal's ${slide.tab} screen`}
-              width={1100}
-              height={688}
-              className="block w-full"
-              loading="lazy"
-              decoding="async"
-            />
+            {/* The first sets the height; the rest lie over it. */}
+            {SLIDES.map((s, i) => (
+              // eslint-disable-next-line @next/next/no-img-element -- a static export has no image optimiser
+              <img
+                key={s.src}
+                src={s.src}
+                alt={i === at ? `The Dev Portal's ${s.tab} screen` : ""}
+                aria-hidden={i === at ? undefined : true}
+                width={1440}
+                height={900}
+                fetchPriority={i === 0 ? "high" : "low"}
+                decoding="async"
+                className={`w-full transition-opacity duration-700 ease-out ${i === 0 ? "block" : "absolute inset-0"} ${i === at ? "opacity-100" : "opacity-0"}`}
+              />
+            ))}
           </div>
         </div>
       </div>

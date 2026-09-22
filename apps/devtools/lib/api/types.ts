@@ -59,7 +59,15 @@ export type Project = {
   name: string;
   module: string;
   preset: "minimal" | "full";
+  /** The v0.2 spelling of `scope`; apps created before v0.3.0 record only it. */
   tenancy?: "single" | "multi";
+  /** How much sign-in the app serves (`orb new --auth`), from v0.3.0 on. */
+  auth?: "none" | "basic" | "full";
+  /** What the app calls a tenant (`orb new --scope`): `none`, `single`, `custom`, or a name such as `merchant`. */
+  scope?: string;
+  /** The words the app uses for one tenant and for many, when it declares a scope. */
+  scope_name?: string;
+  scope_plural?: string;
   features: string[];
   /** The email provider recorded in the manifest. */
   mail?: string;

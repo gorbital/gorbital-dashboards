@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 /**
  * What the panel cycles through: the screens the portal is for, each one a
  * real screenshot of it (docs/dev-portal/screenshots in the gorbital
- * repository, resized for the bundle).
+ * repository).
  */
 const SLIDES = [
   {
@@ -43,9 +43,18 @@ const SLIDES = [
 const EVERY = 6000;
 
 /**
+ * Film grain over the aurora. Generated once as an SVG turbulence and tiled,
+ * rather than shipped as an image: it costs no request and no bytes in the
+ * bundle, and it is what keeps a wide field of one colour from banding.
+ */
+const GRAIN =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E\")";
+
+/**
  * The panel beside the sign-in field: what the Dev Portal is, while you find
- * the token. It advances on its own and stops for anyone who asked their
- * system not to animate; the dots move it by hand, and hovering holds it.
+ * the token. It advances on its own and stays still for anyone who asked
+ * their system not to animate; the indicators move it by hand, and the
+ * active one fills over the slide's own time.
  */
 export function Showcase() {
   const [at, setAt] = useState(0);
@@ -69,8 +78,8 @@ export function Showcase() {
 
   return (
     <aside aria-label="What the Dev Portal shows" className="relative hidden overflow-hidden bg-surface lg:block">
-      {/* The aurora: four lights in the product's colours, each drifting on its
-          own clock so the background never repeats a pose. */}
+      {/* The aurora: four lights in the product's colours, each drifting on
+          its own clock so the background never repeats a pose. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute inset-0 bg-bg" />
         <div className="absolute left-[-20%] top-[-25%] h-[85%] w-[85%] rounded-full bg-[radial-gradient(circle_at_center,var(--color-primary)_0%,transparent_62%)] opacity-75 blur-[60px] motion-safe:animate-[auroraA_19s_ease-in-out_infinite]" />
@@ -79,6 +88,8 @@ export function Showcase() {
         <div className="absolute bottom-[5%] right-[5%] h-[60%] w-[60%] rounded-full bg-[radial-gradient(circle_at_center,var(--color-primary-soft)_0%,transparent_60%)] opacity-50 blur-[80px] motion-safe:animate-[auroraD_27s_ease-in-out_infinite]" />
         {/* Settles the colour so the words on top keep their contrast. */}
         <div className="absolute inset-0 bg-gradient-to-br from-bg/25 via-transparent to-bg/55" />
+        {/* The grain sits over all of it. */}
+        <div className="absolute inset-0 opacity-[0.16] mix-blend-overlay" style={{ backgroundImage: GRAIN, backgroundRepeat: "repeat" }} />
       </div>
 
       <div className="relative flex h-full flex-col gap-6 p-10">
@@ -96,11 +107,7 @@ export function Showcase() {
                 // Fills over the slide's own time, so the bar is the countdown
                 // to the next one. It remounts with the slide, which restarts
                 // it; without motion it simply sits full.
-                <span
-                  key={at}
-                  className="block h-full rounded-full bg-text"
-                  style={still ? { width: "100%" } : { animation: `slideProgress ${EVERY}ms linear forwards` }}
-                />
+                <span key={at} className="block h-full rounded-full bg-text" style={still ? { width: "100%" } : { animation: `slideProgress ${EVERY}ms linear forwards` }} />
               )}
             </button>
           ))}
@@ -112,29 +119,32 @@ export function Showcase() {
           <p className="max-w-[52ch] text-[13px] leading-relaxed text-muted">{slide.body}</p>
         </div>
 
-        {/* The screens, tilted and stacked. Every one is mounted from the
-            start and they cross-fade: remounting the image made the browser
-            decode it again on each change, which showed as a blank frame. */}
-        <div className="relative mt-2 flex-1 px-2" style={{ perspective: "1600px" }}>
-          <div
-            className="absolute inset-x-0 top-0 overflow-hidden rounded-xl border border-border shadow-2xl"
-            style={{ transform: "rotateX(3deg) rotateY(-11deg) rotateZ(0.6deg) scale(0.97)", transformOrigin: "center center" }}
-          >
-            {/* The first sets the height; the rest lie over it. */}
-            {SLIDES.map((s, i) => (
-              // eslint-disable-next-line @next/next/no-img-element -- a static export has no image optimiser
-              <img
-                key={s.src}
-                src={s.src}
-                alt={i === at ? `The Dev Portal's ${s.tab} screen` : ""}
-                aria-hidden={i === at ? undefined : true}
-                width={1440}
-                height={900}
-                fetchPriority={i === 0 ? "high" : "low"}
-                decoding="async"
-                className={`w-full transition-opacity duration-700 ease-out ${i === 0 ? "block" : "absolute inset-0"} ${i === at ? "opacity-100" : "opacity-0"}`}
-              />
-            ))}
+        {/* The screen, straight on and large. Its top and left edges stay in
+            the panel and it runs off the bottom-right corner, which the
+            panel crops — that corner is what gives the page depth, in place
+            of a tilt. Every screenshot is mounted from the start and they
+            cross-fade: remounting the img made the browser decode it again
+            on each change, which showed as a blank frame. */}
+        <div className="relative mt-6 flex-1">
+          <div className="absolute -right-[30%] left-0 top-0">
+            <div className="rounded-tl-[18px] border-l border-t border-white/10 bg-black/50 p-2.5 pb-0 pr-0 shadow-[0_-10px_90px_-20px_rgb(0_0_0/0.8)] backdrop-blur-sm">
+              <div className="relative overflow-hidden rounded-tl-[10px] ring-1 ring-white/5">
+                {SLIDES.map((s, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element -- a static export has no image optimiser
+                  <img
+                    key={s.src}
+                    src={s.src}
+                    alt={i === at ? `The Dev Portal's ${s.tab} screen` : ""}
+                    aria-hidden={i === at ? undefined : true}
+                    width={1440}
+                    height={900}
+                    fetchPriority={i === 0 ? "high" : "low"}
+                    decoding="async"
+                    className={`w-full transition-opacity duration-700 ease-out ${i === 0 ? "block" : "absolute inset-0"} ${i === at ? "opacity-100" : "opacity-0"}`}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>

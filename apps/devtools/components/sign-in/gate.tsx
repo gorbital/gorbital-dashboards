@@ -8,18 +8,6 @@ import { dataMode, isDemo } from "@/lib/api/mode";
 
 import { SignIn } from "./sign-in";
 
-/** Remembers, for this tab only, that the demo's front door has been opened. */
-const DEMO_DONE = "devtoolsDemoEntered";
-
-function demoEntered(): boolean {
-  try {
-    return sessionStorage.getItem(DEMO_DONE) === "1";
-  } catch {
-    // Storage can be blocked; show the page rather than fail.
-    return false;
-  }
-}
-
 /**
  * Shows the sign-in page in place of the portal when this browser has no
  * cookie, and the portal itself once it has one.
@@ -30,13 +18,16 @@ function demoEntered(): boolean {
  * field would ask for a token that would not have helped.
  *
  * The public demo has no portal at all, so it never sees a 401. It shows
- * the page once per tab, with the token filled in, because the sign-in is
- * part of what the demo is showing.
+ * the page on each load, because the sign-in is part of what the demo is
+ * showing. Whether it has been opened before is deliberately not
+ * remembered: reading that from storage while rendering makes the first
+ * client render disagree with the prerendered HTML, and the hydration
+ * mismatch costs a visible flash — the very thing the page should not do.
  */
 export function SignInGate({ children }: { children: React.ReactNode }) {
   const demo = isDemo();
   const mock = dataMode() === "mock";
-  const [entered, setEntered] = useState(demoEntered);
+  const [entered, setEntered] = useState(false);
 
   const session = useQuery({
     queryKey: ["portal", "session"],
@@ -46,21 +37,7 @@ export function SignInGate({ children }: { children: React.ReactNode }) {
     staleTime: 30_000,
   });
 
-  if (demo && !entered) {
-    return (
-      <SignIn
-        demo
-        onDemoDone={() => {
-          try {
-            sessionStorage.setItem(DEMO_DONE, "1");
-          } catch {
-            // Not being able to remember only means the page shows again.
-          }
-          setEntered(true);
-        }}
-      />
-    );
-  }
+  if (demo && !entered) return <SignIn demo onDemoDone={() => setEntered(true)} />;
   if (!mock && session.error instanceof ApiError && session.error.unauthorized) return <SignIn />;
   return <>{children}</>;
 }

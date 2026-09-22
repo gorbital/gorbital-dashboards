@@ -13,19 +13,32 @@ import { useSignIn } from "@/lib/api/sign-in";
 import { Showcase } from "./showcase";
 
 /**
+ * What the demo puts in the field. It is the shape of a real token and none
+ * of its substance: the demo has no portal, so nothing checks it.
+ */
+export const DEMO_TOKEN = "demo-0000-the-portal-here-is-sample-data";
+
+/**
  * The whole portal when this browser has no cookie: one field for the token
  * `orb dev` printed, and beside it what the portal is for. There is no
  * account and no email — the portal has a single secret, generated per run,
  * and holding it is what being signed in means.
  */
-export function SignIn() {
-  const [token, setToken] = useState("");
+export function SignIn({ demo = false, onDemoDone }: { demo?: boolean; onDemoDone?: () => void } = {}) {
+  const [token, setToken] = useState(demo ? DEMO_TOKEN : "");
   const signIn = useSignIn();
   const failed = signIn.isError;
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (token.trim() && !signIn.isPending) signIn.mutate(token);
+    if (!token.trim()) return;
+    // The demo has no portal to post to: going through the page is the
+    // whole of it, and what waits on the other side is the sample data.
+    if (demo) {
+      onDemoDone?.();
+      return;
+    }
+    if (!signIn.isPending) signIn.mutate(token);
   }
 
   return (
@@ -43,7 +56,13 @@ export function SignIn() {
             <div className="grid gap-2">
               <h1 className="text-[24px] font-semibold tracking-tight text-text">Sign in to the Dev Portal</h1>
               <p className="text-[13px] leading-relaxed text-muted">
-                Paste the token <span className="font-mono text-text">orb dev</span> printed in your terminal.
+                {demo ? (
+                  "This is a demo, so the token is filled in. Go through to the portal running on sample data."
+                ) : (
+                  <>
+                    Paste the token <span className="font-mono text-text">orb dev</span> printed in your terminal.
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -85,8 +104,17 @@ export function SignIn() {
           </form>
 
           <p className="text-[11px] leading-relaxed text-dim">
-            The terminal line reads <span className="font-mono text-muted">✓ Dev Portal http://127.0.0.1:3100/_portal/auth?t=…</span> — the token is
-            everything after <span className="font-mono text-muted">t=</span>. Opening that link signs you in too.
+            {demo ? (
+              <>
+                On your own machine the token is the one <span className="font-mono text-muted">orb dev</span> prints, after{" "}
+                <span className="font-mono text-muted">t=</span> in the Dev Portal link. It is new on every run, and it never leaves the machine.
+              </>
+            ) : (
+              <>
+                The terminal line reads <span className="font-mono text-muted">✓ Dev Portal http://127.0.0.1:3100/_portal/auth?t=…</span> — the token
+                is everything after <span className="font-mono text-muted">t=</span>. Opening that link signs you in too.
+              </>
+            )}
           </p>
         </div>
       </main>

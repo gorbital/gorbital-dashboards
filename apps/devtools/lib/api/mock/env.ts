@@ -146,7 +146,7 @@ AUTH_ENCRYPTION_KEYS=k1:hM2uS7eC0f8Qk1yN4rT9vX6zA3bD5gJ8lP0sW2cF7iK=
 # Google sign-in: the OAuth client from the Google Cloud console. Empty
 # leaves the provider off.
 GOOGLE_CLIENT_ID=812734567890-acme.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=GOCSPX-9f8e7d6c5b4a3210fedcba
+GOOGLE_CLIENT_SECRET=example-google-client-secret
 
 # How email leaves the app: devmail (orb dev's inbox, the default in
 # development), mailpit, or provider (real email).

@@ -178,7 +178,7 @@ const drafts: Draft[] = [
     at: NOW - 22 * MIN,
     to: "you@localhost",
     subject: `You're invited to acme on ${APP}`,
-    text: `Ada Lovelace invited you to the acme organisation.\n\nAccept the invitation: ${APP_URL}/v1/orgs/acme/invites/accept?token=inv_9a12f0c4\n\nThe link works for 7 days.`,
+    text: `Ada Lovelace invited you to the acme organisation.\n\nAccept the invitation: ${APP_URL}/v1/orgs/acme/invites/accept?token=example-invite-token\n\nThe link works for 7 days.`,
     category: "org_invite",
     read: false,
   },

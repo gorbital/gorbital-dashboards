@@ -25,7 +25,7 @@ describe("the mock env editor", () => {
     expect(byKey.APP_LOG_LEVEL.description).toBe("debug, info, warn or error.");
     expect(byKey.APP_LOG_LEVEL.line).toBeGreaterThan(0);
     expect(byKey.DATABASE_URL).toMatchObject({ secret: true, value: "po••••••••le" });
-    expect(byKey.GOOGLE_CLIENT_SECRET.value).toBe("GO••••••••ba");
+    expect(byKey.GOOGLE_CLIENT_SECRET.value).toBe("ex••••••••et");
     expect(byKey.RESEND_API_KEY).toMatchObject({ secret: true, set: true, value: "" });
     expect(byKey.GITHUB_CLIENT_ID).toMatchObject({ set: false, missing: true, in_example: true, line: 0 });
     expect(byKey.IMPORT_BATCH_SIZE).toMatchObject({ value: "500", in_example: false, missing: false, description: "Local only: a bigger pool while profiling the importer." });

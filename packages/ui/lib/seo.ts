@@ -1,4 +1,5 @@
 import type { Metadata, MetadataRoute } from "next";
+import { robotsRules } from "./ai-crawlers";
 import type { Product } from "./products";
 
 /**
@@ -44,7 +45,7 @@ export function demoStructuredData(p: Product): object {
 }
 
 export function demoRobots(p: Product): MetadataRoute.Robots {
-  return { rules: { userAgent: "*", allow: "/" }, sitemap: `${p.url}/sitemap.xml` };
+  return { rules: robotsRules(), sitemap: `${p.url}/sitemap.xml` };
 }
 
 export function demoSitemap(p: Product): MetadataRoute.Sitemap {

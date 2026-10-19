@@ -1,0 +1,13 @@
+// observe.gorbital.dev on Cloudflare Workers: the static export in out/, served as assets.
+// Deploy: pnpm --filter observe run cf:deploy
+{
+  "name": "gorbital-observe",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./out",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "routes": [{ "pattern": "observe.gorbital.dev", "custom_domain": true }]
+}

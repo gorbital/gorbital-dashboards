@@ -1,0 +1,13 @@
+// devtools.gorbital.dev on Cloudflare Workers: the static export in out/, served as assets.
+// Deploy: pnpm --filter devtools run cf:deploy
+{
+  "name": "gorbital-devtools",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./out",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "routes": [{ "pattern": "devtools.gorbital.dev", "custom_domain": true }]
+}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono, Manrope, Space_Grotesk } from "next/font/google";
 import { Shell } from "@gorbital/dash/components/shell";
 import { products } from "@gorbital/dash/lib/products";
+import { demoMetadata, demoStructuredData } from "@gorbital/dash/lib/seo";
 import { THEME_INIT_SCRIPT } from "@gorbital/dash/lib/theme-store";
 import { SidebarNav } from "@/components/sidebar-nav";
 import "./globals.css";
@@ -13,8 +14,7 @@ const grotesk = Space_Grotesk({ subsets: ["latin"], weight: "700", variable: "--
 const p = products.deploy;
 
 export const metadata: Metadata = {
-  title: `${p.name} · ${p.kind} for gorbital`,
-  description: p.tagline,
+  ...demoMetadata(p),
   icons: {
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
@@ -28,6 +28,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${manrope.variable} ${geistMono.variable} ${grotesk.variable}`} suppressHydrationWarning>
       <head>
+        {/* What the demo is, for search engines: in the static HTML, before any client-side gate. */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(demoStructuredData(p)).replace(/</g, "\\u003c") }} />
         {/* Apply the saved or system theme before the first paint; dark is the fallback. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>

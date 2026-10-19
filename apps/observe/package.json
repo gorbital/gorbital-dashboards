@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3200",
     "build": "next build",
+    "cf:deploy": "pnpm build && npx -y wrangler@4 deploy",
     "start": "npx serve out -l 3200",
     "typecheck": "tsc --noEmit"
   },

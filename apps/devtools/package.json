@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3101",
     "build": "next build",
+    "cf:deploy": "NEXT_PUBLIC_DEVTOOLS_DATA=mock pnpm build && npx -y wrangler@4 deploy",
     "start": "npx serve out -l 3101",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { demoHomeMetadata } from "@gorbital/dash/lib/seo";
 import Link from "next/link";
 import { ArrowUpRight, GitCommitHorizontal, Rocket, Undo2 } from "lucide-react";
 import { Page, PageHeader } from "@gorbital/dash/components/page";
@@ -13,6 +15,8 @@ import { theme } from "@gorbital/dash/theme";
 import { fmtAgo, fmtDuration } from "@gorbital/dash/lib/format";
 import { envs, releases, pipeline, days, perDay, leadTime, NOW } from "@/lib/mock";
 import { StatusBadge } from "@/components/status";
+
+export const metadata: Metadata = demoHomeMetadata();
 
 export default function Overview() {
   const rolling = releases[0];

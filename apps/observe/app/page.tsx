@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { demoHomeMetadata } from "@gorbital/dash/lib/seo";
 import Link from "next/link";
 import { ArrowUpRight, Clock } from "lucide-react";
 import { Page, PageHeader } from "@gorbital/dash/components/page";
@@ -13,6 +15,8 @@ import { Sparkline } from "@gorbital/dash/charts/sparkline";
 import { theme } from "@gorbital/dash/theme";
 import { fmtInt, fmtAgo, fmtMs, fmtDuration } from "@gorbital/dash/lib/format";
 import { hours, perHour, totals, p95, p50, errRate, slowest, errorGroups, queues, instances, NOW } from "@/lib/mock";
+
+export const metadata: Metadata = demoHomeMetadata();
 
 export default function Overview() {
   const okPct = (totals.ok / totals.requests) * 100;

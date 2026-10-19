@@ -108,7 +108,7 @@ for (const p of PRODUCTS) {
 {
   "name": "gorbital-${p.id}",
   "compatibility_date": "2026-10-01",
-  "workers_dev": true,
+  "workers_dev": false,
   "assets": {
     "directory": "./out/${p.id}",
     "html_handling": "auto-trailing-slash",

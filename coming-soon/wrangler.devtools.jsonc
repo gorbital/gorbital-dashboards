@@ -3,7 +3,7 @@
 {
   "name": "gorbital-devtools",
   "compatibility_date": "2026-10-01",
-  "workers_dev": true,
+  "workers_dev": false,
   "assets": {
     "directory": "./out/devtools",
     "html_handling": "auto-trailing-slash",
